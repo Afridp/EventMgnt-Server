@@ -6,6 +6,6 @@ const otpSchema = new mongoose.Schema({
     createdAt: Date,
     expiresAt: Date,
 })
-const otpmodel = mongoose.model("otp", otpSchema)
+module.exports = mongoose.model("Otp", otpSchema)
 
-module.exports = otpmodel
+ 

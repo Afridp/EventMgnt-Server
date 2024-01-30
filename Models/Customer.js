@@ -1,6 +1,6 @@
 const mongoose = require('mongoose')
 
-const clientSchema = new mongoose.Schema({
+const customerSchema = new mongoose.Schema({
     userName : {
         type: String
     },
@@ -15,8 +15,14 @@ const clientSchema = new mongoose.Schema({
     },
     isEmailVerified : {
         type : Boolean
-    }
+    },
+    bookings : [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'clientEvent' 
+        }
+    ]
 
 })
 
-module.exports = mongoose.model('Client',clientSchema)
+module.exports = mongoose.model('Customer',customerSchema)

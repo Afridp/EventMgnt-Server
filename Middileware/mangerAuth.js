@@ -1,15 +1,15 @@
 const jwt = require('jsonwebtoken');
-const managerModel = require('../Models/managerModel');
+const Manger = require('../Models/Manager');
 
 
 
 
 
-export const userTokenVerify = async (req, res, next) => {
+export const managerTokenVerify = async (req, res, next) => {
   try {
 
     let token = req.headers.authorization;
-    console.log(token);
+    // console.log(token);
     if (!token) {
       return res.status(403).json({ message: 'Access Denied' });
     }
@@ -17,15 +17,15 @@ export const userTokenVerify = async (req, res, next) => {
       token = token.slice(7, token.length).trimLeft();
     }
     const verified = jwt.verify(token, process.env.TOKEN_KEY);
-    console.log(verified);
+    // console.log(verified);
 
-    req.user = verified.id;
+    req.manger = verified.id;
 
     if (verified.role == 'manager') {
 
-      const user = await managerModel.findOne({ _id: verified.id });
+      const manager = await Manger.findOne({ _id: verified.id });
 
-      if (!user.isEmailVerified) {
+      if (!manager.isEmailVerified) {
         // add isBlocked instead
         return res.status(403).json({ message: 'Manager is Blocked' });
       } else {

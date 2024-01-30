@@ -15,7 +15,19 @@ const managerSchema = new mongoose.Schema({
     },
     isEmailVerified: {
         type: Boolean
-    }
+    },
+    // hostedEvents: [
+    //     {
+    //         type: mongoose.Schema.Types.ObjectId,
+    //         ref: "Event"
+    //     }
+    // ],
+    bookings: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "clientEvent"
+        }
+    ]
 })
 
 module.exports = mongoose.model('Manager', managerSchema)

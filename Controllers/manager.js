@@ -1,9 +1,10 @@
 const jwt = require('jsonwebtoken')
 
 
-const managerModel = require('../Models/managerModel')
-const otpModel = require('../Models/otpModel')
-const eventModel = require('../Models/eventModel')
+const Manager = require('../Models/Manager')
+const Otp = require('../Models/Otp')
+const Event = require('../Models/Event')
+const Customer = require("../Models/Customer");
 
 
 const bcrypt = require('bcryptjs')
@@ -19,7 +20,7 @@ const managerSignup = async (req, res) => {
     try {
         const { cemail, username, cmobile, password } = req.body
 
-        const existManager = await managerModel.findOne({
+        const existManager = await Manager.findOne({
             $or: [
                 { companyMobile: cmobile },
                 { companyEmail: cemail }
@@ -31,7 +32,7 @@ const managerSignup = async (req, res) => {
         } else {
             const spassword = await hash.hashPassword(password)
 
-            const newManagr = new managerModel({
+            const newManagr = new Manager({
                 companyEmail: cemail,
                 username: username,
                 companyMobile: cmobile,
@@ -56,7 +57,7 @@ const otpVerification = async (req, res) => {
     try {
         const { enteredOtp, managerId, otpId } = req.body
 
-        const isOtp = await otpModel.findOne({ _id: otpId })
+        const isOtp = await Otp.findOne({ _id: otpId })
         const correctOtp = isOtp.otp
 
         const { expiresAt } = isOtp
@@ -66,8 +67,8 @@ const otpVerification = async (req, res) => {
         }
         if (correctOtp === enteredOtp) {
 
-            await otpModel.deleteMany({ _id: otpId });
-            await managerModel.updateOne({ _id: managerId }, { $set: { isEmailVerified: true } });
+            await Otp.deleteMany({ _id: otpId });
+            await Manager.updateOne({ _id: managerId }, { $set: { isEmailVerified: true } });
 
             res.status(200).json({ status: true, message: "Registered succesfully You can login now" })
         } else {
@@ -84,7 +85,7 @@ const resendOtp = async (req, res) => {
     try {
         const { managerId } = req.body
 
-        const data = await managerModel.findOne({ _id: managerId })
+        const data = await Manager.findOne({ _id: managerId })
 
         const otpId = await sendToMail(data.username, data.companyEmail, data._id)
         if (otpId) {
@@ -102,7 +103,7 @@ const managerSignin = async (req, res) => {
         const { signinDetails, password } = req.body
 
 
-        const ManagerExist = await managerModel.findOne({
+        const ManagerExist = await Manager.findOne({
             $or: [
                 { username: signinDetails },
                 { companyEmail: signinDetails }
@@ -139,7 +140,7 @@ const managerSignin = async (req, res) => {
 
 const getEvents = async (req, res) => {
     try {
-        const events = await eventModel.find()
+        const events = await Event.find()
         res.status(200).json({ event: events })
     } catch (error) {
         console.error(error.message);
@@ -151,7 +152,7 @@ const newEvents = async (req, res) => {
     try {
         const { eventName, eventDescription, image } = req.body
 
-        const existEvent = await eventModel.findOne({ eventName: eventName })
+        const existEvent = await Event.findOne({ eventName: eventName })
 
         if (!existEvent) {
             const uploaded = await cloudinary.uploader.upload(image, {
@@ -161,7 +162,7 @@ const newEvents = async (req, res) => {
                 // check what is upload preset is
 
             })
-            const newEvent = new eventModel({
+            const newEvent = new Event({
                 eventName,
                 eventDescription,
                 eventImage: uploaded.secure_url,
@@ -187,7 +188,7 @@ const editEvent = async (req, res) => {
         const { eventName, eventDescription, _id } = req.body
         console.log(eventName, eventDescription, _id);
 
-        const updated = await eventModel.findByIdAndUpdate({ _id: _id }, {
+        const updated = await Event.findByIdAndUpdate({ _id: _id }, {
             $set: {
                 eventName: eventName,
                 eventDescription: eventDescription
@@ -207,13 +208,13 @@ const listingAndUnlist = async (req, res) => {
         const { eventId } = req.params;
 
         // Find the current event by ID
-        const currentEvent = await eventModel.findById(eventId);
+        const currentEvent = await Event.findById(eventId);
 
         // Toggle the value of the List field
         const newListValue = !currentEvent.list;
 
         // Update the event with the new value of the List field
-        const updatedEvent = await eventModel.findByIdAndUpdate(
+        const updatedEvent = await Event.findByIdAndUpdate(
             { _id: eventId },
             { $set: { list: newListValue } },
             { new: true } // Returns the updated document
@@ -229,7 +230,19 @@ const listingAndUnlist = async (req, res) => {
     }
 };
 
-module.exports = listingAndUnlist;
+const fetchAllBooking = async (req,res) => {
+    try {
+        // const { managerId } = req.params
+
+        const bookings = await Bookings.find()
+        res.status(200).json({bookings})
+
+    } catch (error) {
+        console.error(error.message);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+}
+
 
 module.exports = {
     managerSignup,
@@ -239,5 +252,6 @@ module.exports = {
     newEvents,
     getEvents,
     editEvent,
-    listingAndUnlist
+    listingAndUnlist,
+    fetchAllBooking
 }
