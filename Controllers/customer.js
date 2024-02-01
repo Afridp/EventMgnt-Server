@@ -131,7 +131,7 @@ const customerSignup = async (req, res) => {
 const findCustomer = async (req, res) => {
     try {
         const { customerId } = req.params
-        const isCustomerAvailable = await Customer.findById(customerId )
+        const isCustomerAvailable = await Customer.findById(customerId)
 
         if (isCustomerAvailable) {
             res.status(200).json({ customer: isCustomerAvailable })
@@ -146,19 +146,34 @@ const findCustomer = async (req, res) => {
 
 const getEvents = async (req, res) => {
     try {
-        const events = await Event.find({ list: true })
 
-        if (events.length) {
-            console.log(events);
-            res.status(200).json({ events })
-        } else {
-            res.status(204).json({ message: "no data" })
+        const { search, sort } = req.query
+        const query = { list: true };
+
+        if (search) {
+            query.eventName = { $regex: new RegExp(search, 'i') };
         }
+
+        let events
+
+        if (sort) {
+            if (sort === 'eventNameAscending') {
+                events = await Event.find(query)
+                    .sort({ eventName: 1 })
+            } else if (sort === 'eventNameDescending') {
+                events = await Event.find(query)
+                    .sort({ eventName: -1 })
+            }
+        } else {
+            events = await Event.find(query)
+        }
+        res.status(200).json({ events });
     } catch (error) {
-        console.log(error);
-        res.status(500).json({ message: "internal server Error" })
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
     }
-}
+};
+
 
 const createEvent = async (req, res) => {
     try {
@@ -223,7 +238,6 @@ const createEvent = async (req, res) => {
             eventTheme,
             otherTheme,
             themeImage: image,
-
             techSupport,
             additionalRequirement,
             name,
@@ -234,9 +248,7 @@ const createEvent = async (req, res) => {
 
         const savedEvent = await newEvent.save();
 
-        res
-            .status(201)
-            .json({ message: "Event created successfully", event: savedEvent });
+        res.status(201).json({ message: "Event created successfully", event: savedEvent });
     } catch (error) {
         console.log(error);
         res.status(500).json({ message: "internal server Error" });
@@ -247,12 +259,31 @@ const createEvent = async (req, res) => {
 const getBookings = async (req, res) => {
     try {
         const { customerId } = req.params
-        const bookings = await Booking.find({ customerId: customerId }).populate('customerId').exec()
+        const { search, sort } = req.query
 
+        let query = { customerId : customerId}
+        
+        if(search){
+            query.eventName = { $regex: new RegExp(search, 'i') };
+        }
+
+        let bookings
+
+        if (sort) {
+            if (sort === 'dateAscending') {
+                bookings = await Booking.find(query)
+                    .sort({ startDate: 1 })
+            } else if (sort === 'dateDescending') {
+                bookings = await Booking.find(query)
+                    .sort({ startDate: -1 })
+            }
+        } else {
+            bookings = await Booking.find(query)
+        }
         if (bookings.length) {
             res.status(200).json({ bookings })
         } else {
-            res.status(202).json({ message: "no data" })
+            res.status(204).json({ message: "no data" })
         }
     } catch (error) {
         console.log(error);
@@ -295,7 +326,6 @@ const editBooked = async (req, res) => {
             entertainer,
             eventTheme,
             otherTheme,
-            // themeImage,
             audioVisual,
             techSupport,
             additionalRequirement,
@@ -353,16 +383,16 @@ const deleteBooked = async (req, res) => {
         const today = new Date();
         const tenDaysAgo = new Date(today);
         tenDaysAgo.setDate(today.getDate() - 10);
-        console.log(eventStartDate,"+",tenDaysAgo);
-        
+        console.log(eventStartDate, "+", tenDaysAgo);
+
 
         // if (eventStartDate > tenDaysAgo) {
-           
-            const deleted = await Booking.findByIdAndDelete({ _id: eventId })
-            if (!deleted) {
-                return res.status(404).json({ message: "Booking not found" });
-            }
-            res.status(200).json({ message: "Deleted Successfully" });
+
+        const deleted = await Booking.findByIdAndDelete({ _id: eventId })
+        if (!deleted) {
+            return res.status(404).json({ message: "Booking not found" });
+        }
+        res.status(200).json({ message: "Deleted Successfully" });
         // }else{
         //     res.status(409).json({message : "You can't cancel the event 10 days before of the event,Please contact customer care for cancallation procedure"})
         // }

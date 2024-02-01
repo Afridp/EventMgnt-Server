@@ -175,6 +175,8 @@ const newEvents = async (req, res) => {
 
             res.status(201).json({ message: 'Event added successfully', event: savedEvent });
         } else {
+
+        
             res.status(403).json({ message: "Event you are trying to add is already exist" })
         }
     } catch (error) {
