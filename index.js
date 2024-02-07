@@ -11,7 +11,7 @@ db.connect()
 
 app.use(express.json({ limit : '10mb'}))
 // middleware for parsing incoming JSON payloads,to make available in route handlers
-app.use(express.urlencoded({extended:true}))
+app.use(express.urlencoded({extended:true,limit : '5mb'}))
 // middleware for parsing the URL encoded data,(html forms datas)
 
 // middleware for setting or configuring the cors and making the connection good

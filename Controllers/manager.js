@@ -5,12 +5,13 @@ const Manager = require('../Models/Manager')
 const Otp = require('../Models/Otp')
 const Event = require('../Models/Event')
 const Customer = require("../Models/Customer");
+const Booking = require('../Models/Booking');
 
 
 const bcrypt = require('bcryptjs')
 const hash = require('../Utils/bcryptPassword')
 const sendToMail = require('../Utils/mailSender')
-const cloudinary = require('../Utils/cloudinary')
+const cloudinary = require('../Utils/cloudinary');
 
 
 
@@ -28,7 +29,7 @@ const managerSignup = async (req, res) => {
         })
 
         if (existManager) {
-            res.status(409).json({ message: "you have already registered with us,please login" })
+            res.status(409).json({ message: "You have already registered with us,please login" })
         } else {
             const spassword = await hash.hashPassword(password)
 
@@ -148,7 +149,7 @@ const getEvents = async (req, res) => {
     }
 }
 
-const newEvents = async (req, res) => {
+const addNewEvents = async (req, res) => {
     try {
         const { eventName, eventDescription, image } = req.body
 
@@ -176,7 +177,7 @@ const newEvents = async (req, res) => {
             res.status(201).json({ message: 'Event added successfully', event: savedEvent });
         } else {
 
-        
+
             res.status(403).json({ message: "Event you are trying to add is already exist" })
         }
     } catch (error) {
@@ -232,12 +233,12 @@ const listingAndUnlist = async (req, res) => {
     }
 };
 
-const fetchAllBooking = async (req,res) => {
+const fetchAllBooking = async (req, res) => {
     try {
         // const { managerId } = req.params
 
-        const bookings = await Bookings.find()
-        res.status(200).json({bookings})
+        const bookings = await Booking.find()
+        res.status(200).json({ bookings })
 
     } catch (error) {
         console.error(error.message);
@@ -245,15 +246,28 @@ const fetchAllBooking = async (req,res) => {
     }
 }
 
+const getEventData = async(req,res) => {
+    try {
+        const { eventId } = req.query
+  
+        const eventData = await Booking.findById(eventId)
+      
+        res.status(200).json({ eventData})
+    } catch (error) {
+        console.error(error.message);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+}
 
 module.exports = {
     managerSignup,
     managerSignin,
     otpVerification,
     resendOtp,
-    newEvents,
+    addNewEvents,
     getEvents,
     editEvent,
     listingAndUnlist,
-    fetchAllBooking
+    fetchAllBooking,
+    getEventData
 }

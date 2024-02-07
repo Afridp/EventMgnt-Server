@@ -16,13 +16,17 @@ const customerSchema = new mongoose.Schema({
     isEmailVerified : {
         type : Boolean
     },
+    profilePic : {
+        type : String
+    },
     bookings : [
         {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'clientEvent' 
         }
     ]
-
-})
+    
+    ,
+},{timestamps : true})
 
 module.exports = mongoose.model('Customer',customerSchema)

@@ -110,7 +110,7 @@ const customerSignup = async (req, res) => {
 
             const newCustomer = new Customer({
                 email: email,
-                username: username,
+                userName: username,
                 mobile: mobile,
                 password: spassword,
                 isEmailVerified: false
@@ -205,7 +205,7 @@ const createEvent = async (req, res) => {
             location,
         } = req.body;
         const { customerId } = req.params;
-        console.log(audioVisual, "this audio visual");
+
         let image = null
         if (themeImage) {
             let uploaded = await cloudinary.uploader.upload(themeImage, {
@@ -261,9 +261,9 @@ const getBookings = async (req, res) => {
         const { customerId } = req.params
         const { search, sort } = req.query
 
-        let query = { customerId : customerId}
-        
-        if(search){
+        let query = { customerId: customerId }
+
+        if (search) {
             query.eventName = { $regex: new RegExp(search, 'i') };
         }
 
@@ -368,6 +368,7 @@ const editBooked = async (req, res) => {
 
         res.status(201).json({ message: "Updated Successfully" })
 
+
     } catch (error) {
         console.log(error);
         res.status(500).json({ message: "internal server Error" })
@@ -403,6 +404,78 @@ const deleteBooked = async (req, res) => {
     }
 }
 
+const updateProfilePic = async (req, res) => {
+    try {
+        const { profile } = req.body
+        const { customerId } = req.query
+        const uploaded = await cloudinary.uploader.upload(profile, {
+            public_id: `customerProfiles/${customerId}`,
+            uload_preset: 'mi_default',
+
+        })
+
+        const updated = await Customer.findByIdAndUpdate(customerId, {
+            $set: {
+                profilePic: uploaded.secure_url
+            },
+
+        },
+            { new: true })
+        res.status(200).json({ message: "Profile Image updated successfully", customerData: updated })
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "internal server Error" })
+    }
+}
+const updateProfile = async (req, res) => {
+    try {
+        const { userName, mobile, email } = req.body
+        const { customerId } = req.query
+
+        const updated = await Customer.findByIdAndUpdate(customerId, {
+            $set: {
+                userName: userName,
+                email: email,
+                mobile: mobile
+            }
+        }, { new: true })
+
+        res.status(200).json({ updated, message: "Profile details updated successfully" })
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "internal server Error" })
+    }
+}
+
+const changePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body
+        const { customerId } = req.query
+        console.log(customerId);
+
+        const customer = await Customer.findById(customerId)
+        console.log(customer);
+        const isPasswordMatched = await bcrypt.compare(currentPassword, customer.password)
+
+        if (isPasswordMatched) {
+            const hashPassword = await hash.hashPassword(newPassword, 10)
+            await Customer.findByIdAndUpdate(customerId, {
+                $set: {
+                    password: hashPassword
+                }
+            })
+
+            res.status(200).json({ message: "Password changed successfully" })
+        } else {
+            res.status(409).json({ message: "Current is wrong,try again" })
+        }
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "internal server Error" })
+
+    }
+}
+
 module.exports = {
     customerSignin,
     customerSignup,
@@ -414,6 +487,9 @@ module.exports = {
     getBookings,
     getEvent,
     editBooked,
-    deleteBooked
+    deleteBooked,
+    updateProfilePic,
+    updateProfile,
+    changePassword
 
 }
