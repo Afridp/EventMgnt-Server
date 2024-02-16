@@ -28,4 +28,7 @@ app.use('/manager',managerRoute)
 const customerRoute = require('./Routes/customerRoutes')
 app.use('/',customerRoute)
 
+const employeeRoute = require('./Routes/employeeRoutes')
+app.use('/employee',employeeRoute)
+
 app.listen(5000,() =>console.log('server connected'))

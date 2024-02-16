@@ -14,7 +14,12 @@ const managerSchema = new mongoose.Schema({
         type: String
     },
     isEmailVerified: {
-        type: Boolean
+        type: Boolean,
+        default : false
+    },
+    isBlocked : {
+        type : Boolean,
+        default : false
     },
     // hostedEvents: [
     //     {
@@ -22,6 +27,23 @@ const managerSchema = new mongoose.Schema({
     //         ref: "Event"
     //     }
     // ],
+    subscribed : {
+        type : Boolean,
+        default : false
+    },
+    subscriptionPlan : {
+        type : String
+    },
+    subscriptionStart : {
+        type : Date
+    },
+    subscriptionEnd : {
+        type : Date
+    },
+    isTrailed : {
+        type : Boolean,
+        default : false
+    },
     bookings: [
         {
             type: mongoose.Schema.Types.ObjectId,

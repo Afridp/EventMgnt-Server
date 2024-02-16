@@ -206,6 +206,8 @@ const createEvent = async (req, res) => {
         } = req.body;
         const { customerId } = req.params;
 
+       
+
         let image = null
         if (themeImage) {
             let uploaded = await cloudinary.uploader.upload(themeImage, {
@@ -281,6 +283,7 @@ const getBookings = async (req, res) => {
             bookings = await Booking.find(query)
         }
         if (bookings.length) {
+            
             res.status(200).json({ bookings })
         } else {
             res.status(204).json({ message: "no data" })
@@ -384,7 +387,7 @@ const deleteBooked = async (req, res) => {
         const today = new Date();
         const tenDaysAgo = new Date(today);
         tenDaysAgo.setDate(today.getDate() - 10);
-        console.log(eventStartDate, "+", tenDaysAgo);
+        0
 
 
         // if (eventStartDate > tenDaysAgo) {

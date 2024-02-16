@@ -1,16 +1,16 @@
 const mongoose = require('mongoose');
 
 const bookingSchema = new mongoose.Schema({
-  customerId : {
-    type : mongoose.Schema.Types.ObjectId,
-    ref : "Customer"
+  customerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Customer"
   },
   startDate: {
-    type: String,
+    type: Date,
     // required: true,
   },
   endDate: {
-    type: String
+    type: Date
     // required: true,
   },
   guestRequirement: {
@@ -18,7 +18,7 @@ const bookingSchema = new mongoose.Schema({
     // required: true,
   },
   cateringNeeds: {
-    type: String  , // You might want to use a more specific type depending on your requirements
+    type: String, // You might want to use a more specific type depending on your requirements
     // required: true,
   },
   eventName: {
@@ -49,50 +49,54 @@ const bookingSchema = new mongoose.Schema({
     type: Number,
     // required: true,
   },
-  foodPreference : {
-    type : String
+  foodPreference: {
+    type: String
   },
-  cuisines : {
-    type : String,
+  cuisines: {
+    type: String,
   },
-  desiredEntertainment : {
-    type : String
+  desiredEntertainment: {
+    type: String
   },
-  entertainer : {
-    type : String
+  entertainer: {
+    type: String
   },
-  eventTheme : {
-    type : String
+  eventTheme: {
+    type: String
   },
-  otherTheme : {
-    type : String
+  otherTheme: {
+    type: String
   },
-  themeImage : {
-    type : String
+  themeImage: {
+    type: String
   },
-  audioVisual : {
-    type : String
+  audioVisual: {
+    type: String
   },
-  techSupport : {
-    type : String
+  techSupport: {
+    type: String
   },
-  additionalRequirement : { 
-    type : String
+  additionalRequirement: {
+    type: String
   },
-  name : {
-    type : String
+  name: {
+    type: String
   },
-  email : {
-    type : String
+  email: {
+    type: String
   },
-  phoneNumber : {
-    type : Number
+  phoneNumber: {
+    type: Number
   },
-  alternativePhoneNumber : {
-    type : Number
+  alternativePhoneNumber: {
+    type: Number
+  },
+  isAccepted : {
+    type : Boolean,
+    default : false
   }
 });
 
 
 
-module.exports =  mongoose.model('Booking', bookingSchema);
+module.exports = mongoose.model('Booking', bookingSchema);

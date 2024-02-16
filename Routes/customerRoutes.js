@@ -18,4 +18,5 @@ customerRoute.delete('/deleteBooked/:eventId',deleteBooked)
 customerRoute.post('/updateProfilePic',updateProfilePic)
 customerRoute.post('/updateProfile',updateProfile)
 customerRoute.post('/changePassword',changePassword)
+
 module.exports = customerRoute

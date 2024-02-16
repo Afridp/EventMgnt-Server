@@ -10,8 +10,9 @@ const Booking = require('../Models/Booking');
 
 const bcrypt = require('bcryptjs')
 const hash = require('../Utils/bcryptPassword')
-const sendToMail = require('../Utils/mailSender')
+const {otpSendToMail} = require('../Utils/mailSender')
 const cloudinary = require('../Utils/cloudinary');
+const Employee = require('../Models/Employee');
 
 
 
@@ -42,9 +43,9 @@ const managerSignup = async (req, res) => {
             })
 
             const managerData = newManagr.save()
-
+     
             // const token = jwt.sign({ managerId: managerData.id }, process.env.TOKEN_KEY, { expiresIn: '1h' })
-            const otpId = await sendToMail((await managerData).username, (await managerData).companyEmail, (await managerData)._id)
+            const otpId = await otpSendToMail((await managerData).username, (await managerData).companyEmail, (await managerData)._id)
 
             res.status(200).json({ managerId: (await managerData)._id, otpId, message: `otp has been sent to ${cemail}` })
         }
@@ -104,7 +105,7 @@ const managerSignin = async (req, res) => {
         const { signinDetails, password } = req.body
 
 
-        const ManagerExist = await Manager.findOne({
+        let ManagerExist = await Manager.findOne({
             $or: [
                 { username: signinDetails },
                 { companyEmail: signinDetails }
@@ -120,7 +121,21 @@ const managerSignin = async (req, res) => {
                 if (isPassword) {
                     const token = jwt.sign({ managerId: ManagerExist._id, role: "manager" }, process.env.TOKEN_KEY, { expiresIn: '1h' })
 
-                    res.status(200).json({ managerData: ManagerExist, token, message: "login success" })
+                    if (ManagerExist.subscribed) {
+                        let currentDate = new Date()
+                        let expiredMsg = ''
+                        let subscriptionEndDate = new Date(ManagerExist.subscriptionEnd)
+                        if (currentDate < subscriptionEndDate) {
+                            // If subscription has expired, update database and Redux state
+                            ManagerExist = await Manager.findByIdAndUpdate(ManagerExist._id, { $set: { subscribed: false } }, { new: true });
+
+                            expiredMsg = "Your plan in ended,kindly Upgrage ur plan"
+                            //  req.user.subscribed = false; // Update user object in request
+                        }
+                        res.status(200).json({ managerData: ManagerExist, token, message: "login success", subInfo: expiredMsg })
+                    } else {
+                        res.status(200).json({ managerData: ManagerExist, token, message: "login success" })
+                    }
                 } else {
                     res.status(401).json({ message: "password is incorrect please try again" })
                 }
@@ -209,16 +224,16 @@ const editEvent = async (req, res) => {
 const listingAndUnlist = async (req, res) => {
     try {
         const { eventId } = req.params;
-
+  
         // Find the current event by ID
         const currentEvent = await Event.findById(eventId);
-
+      
         // Toggle the value of the List field
         const newListValue = !currentEvent.list;
 
         // Update the event with the new value of the List field
         const updatedEvent = await Event.findByIdAndUpdate(
-            { _id: eventId },
+            eventId,
             { $set: { list: newListValue } },
             { new: true } // Returns the updated document
         );
@@ -238,6 +253,7 @@ const fetchAllBooking = async (req, res) => {
         // const { managerId } = req.params
 
         const bookings = await Booking.find()
+
         res.status(200).json({ bookings })
 
     } catch (error) {
@@ -246,19 +262,251 @@ const fetchAllBooking = async (req, res) => {
     }
 }
 
-const getEventData = async(req,res) => {
+const getEventData = async (req, res) => {
     try {
         const { eventId } = req.query
-  
+
         const eventData = await Booking.findById(eventId)
-      
-        res.status(200).json({ eventData})
+
+        res.status(200).json({ eventData })
     } catch (error) {
         console.error(error.message);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 }
 
+const getTodaysEvents = async (req, res) => {
+    try {
+        // const today = new Date()
+        // today.setDate(today.getDate() - 1); 
+        // console.log(today);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Set hours, minutes, seconds, and milliseconds to zero
+
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1); // Get tomorrow's date
+
+
+
+        // Find bookings where startDate falls within today's date
+        const todaysEvents = await Booking.find({
+            startDate: {
+                $gte: today, // Greater than or equal to today (inclusive)
+                $lt: tomorrow // Less than tomorrow (exclusive)
+            }
+        });
+
+        // const todaysEvents = await Booking.find({ startDate: { $eq: today } })
+
+        res.status(200).json({ todaysEvents })
+
+
+
+
+
+
+    } catch (error) {
+        console.error(error.message);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+}
+
+const getUpcomingEvents = async (req, res) => {
+    try {
+        const today = new Date()
+        const upcomingEvents = await Booking.find({
+            startDate: { $gte: today }
+        })
+
+        res.status(200).json({ upcomingEvents })
+    } catch (error) {
+        console.error(error.message);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+}
+
+const manageSubscription = async (req, res) => {
+    try {
+        const { selectedPlan, managerId } = req.body
+
+        let currentDate = new Date()
+
+        let subscriptionEndDate
+
+        if (selectedPlan === "Trail") {
+
+            let trailEndDate = new Date()
+            trailEndDate.setDate(trailEndDate.getDate() + 30)
+
+
+            const managerSubscribed = await Manager.findByIdAndUpdate(managerId, {
+                $set: {
+                    subscribed: true,
+                    subscriptionPlan: selectedPlan,
+                    subscriptionStart: currentDate,
+                    subscriptionEnd: trailEndDate,
+                    isTrailed: true
+                },
+            }, { new: true })
+
+            let endDate = trailEndDate.toLocaleDateString("en-GB")
+
+            res.status(200).json({ message: `Yeeh..You have subscribed successfully. Your free trial ends at ${endDate}`, managerSubscribed })
+
+        } else if (selectedPlan === "Monthly") {
+
+            subscriptionEndDate = new Date(currentDate)
+            subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1)
+
+
+            const managerSubscribed = await Manager.findByIdAndUpdate(managerId, {
+                $set: {
+                    subscribed: true,
+                    subscriptionPlan: selectedPlan,
+                    subscriptionStart: currentDate,
+                    subscriptionEnd: subscriptionEndDate
+                },
+            }, { new: true })
+
+            let endDate = subscriptionEndDate.toLocaleDateString("en-GB")
+
+            res.status(200).json({ message: `Subscription successful. Your subscription ends at ${endDate}`, managerSubscribed })
+
+        } else if (selectedPlan === "Yearly") {
+
+            subscriptionEndDate = new Date(currentDate)
+            subscriptionEndDate.setFullYear(subscriptionEndDate.getFullYear() + 1)
+
+
+            const managerSubscribed = await Manager.findByIdAndUpdate(managerId, {
+                $set: {
+                    subscribed: true,
+                    subscriptionPlan: selectedPlan,
+                    subscriptionStart: currentDate,
+                    subscriptionEnd: subscriptionEndDate
+                },
+            }, { new: true })
+
+
+            let endDate = subscriptionEndDate.toLocaleDateString("en-GB")
+
+            res.status(200).json({ message: `Subscription successful. Your subscription ends at ${endDate}`, managerSubscribed })
+
+        } else {
+            res.status(400).json({ message: "Invalid subscription plan" });
+        }
+
+    } catch (error) {
+        console.error(error.message);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+}
+
+
+// const isSubscribed = async (req, res) => {
+//     try {
+
+//         const managerId = req.headers.managerid
+//         const manager = await Manager.findById(managerId)
+
+//         if (manager.subscribed === false) {
+//             res.status(200).json({ message: "you have not subscribed" })
+//         } else {
+//             res.status(100).json({ message: "you have done" })
+//         }
+//     } catch (error) {
+//         console.log(error.message);
+//     }
+// }
+
+const getNewEmployees = async (req, res) => {
+    try {
+        const newEmployees = await Employee.find({ isApproved: false })
+
+        if (newEmployees) {
+            res.status(201).json({ newEmployees })
+        }
+    } catch (error) {
+        console.error(error.message);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+}
+
+const approveEmployee = async (req, res) => {
+    try {
+        const { employeeId } = req.query
+
+        const employee = await Employee.findById(employeeId)
+        await sendToMail.sendCredentialsToEmployee(employee.email, employee.name)
+
+        await Employee.findByIdAndUpdate(employeeId, {
+            $set: {
+                isApproved: true
+            }
+        })
+        res.status(200).json({ message: "Done" })
+    } catch (error) {
+        console.error(error.message);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+}
+
+const getAllEmployees = async (req, res) => {
+    try {
+        const { search } = req.query
+        let query = { isApproved: true }
+
+        if (search) {
+            query.name = { $regex: new RegExp(search, "i") }
+        }
+        const employees = await Employee.find(query)
+
+        if (employees) {
+            res.status(200).json({ employees })
+        }
+    } catch (error) {
+        console.error(error.message);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+}
+
+const blockUnblockEmployee = async (req, res) => {
+    try {
+        const { employeeId } = req.query
+
+        const employeeToBlock = await Employee.findById(employeeId);
+
+        // Toggle the value of the List field
+        const newBlockValue = !employeeToBlock.isBlocked;
+        // Update the event with the new value of the List field 
+        const updatedEmployee = await Employee.findByIdAndUpdate(
+            employeeId,
+            { $set: { isBlocked: newBlockValue } },
+            { new: true } // Returns the updated document
+        );
+
+        res.status(200).json({
+            message: 'Employee updated successfully',
+            isBlocked: newBlockValue,
+            employee: updatedEmployee,
+        });
+    } catch (error) {
+        console.error(error.message);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+}
+
+const getNewBookings = async (req, res) => {
+    try {
+        const newBookings = await Booking.find()
+        if (newBookings) {
+            res.status(200).json({ newBookings })
+        }
+    } catch (error) {
+        console.error(error.message);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+}
 module.exports = {
     managerSignup,
     managerSignin,
@@ -269,5 +517,14 @@ module.exports = {
     editEvent,
     listingAndUnlist,
     fetchAllBooking,
-    getEventData
+    getEventData,
+    getTodaysEvents,
+    getUpcomingEvents,
+    manageSubscription,
+    // isSubscribed,
+    getNewEmployees,
+    approveEmployee,
+    getAllEmployees,
+    blockUnblockEmployee,
+    getNewBookings
 }
