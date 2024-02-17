@@ -10,7 +10,7 @@ const Booking = require('../Models/Booking');
 
 const bcrypt = require('bcryptjs')
 const hash = require('../Utils/bcryptPassword')
-const {otpSendToMail} = require('../Utils/mailSender')
+const { otpSendToMail } = require('../Utils/mailSender')
 const cloudinary = require('../Utils/cloudinary');
 const Employee = require('../Models/Employee');
 
@@ -43,7 +43,7 @@ const managerSignup = async (req, res) => {
             })
 
             const managerData = newManagr.save()
-     
+
             // const token = jwt.sign({ managerId: managerData.id }, process.env.TOKEN_KEY, { expiresIn: '1h' })
             const otpId = await otpSendToMail((await managerData).username, (await managerData).companyEmail, (await managerData)._id)
 
@@ -113,41 +113,20 @@ const managerSignin = async (req, res) => {
         })
 
         if (ManagerExist) {
-
             if (ManagerExist.isEmailVerified) {
-
                 const isPassword = await bcrypt.compare(password, ManagerExist.password)
-
                 if (isPassword) {
                     const token = jwt.sign({ managerId: ManagerExist._id, role: "manager" }, process.env.TOKEN_KEY, { expiresIn: '1h' })
-
-                    if (ManagerExist.subscribed) {
-                        let currentDate = new Date()
-                        let expiredMsg = ''
-                        let subscriptionEndDate = new Date(ManagerExist.subscriptionEnd)
-                        if (currentDate < subscriptionEndDate) {
-                            // If subscription has expired, update database and Redux state
-                            ManagerExist = await Manager.findByIdAndUpdate(ManagerExist._id, { $set: { subscribed: false } }, { new: true });
-
-                            expiredMsg = "Your plan in ended,kindly Upgrage ur plan"
-                            //  req.user.subscribed = false; // Update user object in request
-                        }
-                        res.status(200).json({ managerData: ManagerExist, token, message: "login success", subInfo: expiredMsg })
-                    } else {
-                        res.status(200).json({ managerData: ManagerExist, token, message: "login success" })
-                    }
+                    res.status(200).json({ managerData: ManagerExist, token, message: "login success" })
                 } else {
                     res.status(401).json({ message: "password is incorrect please try again" })
                 }
-
             } else {
                 res.status(403).json({ message: 'Sorry You cannot access until you verify account' })
             }
         } else {
             res.status(401).json({ message: "You are not registered with us please register to login" })
         }
-
-
     } catch (error) {
         console.log(error.message);
         res.status(500).json({ message: "Internal Server Error" })
@@ -224,10 +203,10 @@ const editEvent = async (req, res) => {
 const listingAndUnlist = async (req, res) => {
     try {
         const { eventId } = req.params;
-  
+
         // Find the current event by ID
         const currentEvent = await Event.findById(eventId);
-      
+
         // Toggle the value of the List field
         const newListValue = !currentEvent.list;
 

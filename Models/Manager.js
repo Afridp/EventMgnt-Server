@@ -7,6 +7,9 @@ const managerSchema = new mongoose.Schema({
     username: {
         type: String
     },
+    companyName : {
+        type : String
+    },
     companyMobile: {
         type: Number
     },

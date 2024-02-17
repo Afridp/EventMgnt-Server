@@ -133,12 +133,56 @@ const sendCredentialsToEmployee = async (email, name) => {
 
     return
   } catch (error) {
-    console.error(error.message, "this is probn")
+    console.error(error.message, "this is prob")
   }
 }
 
 
+const sendSubscriptionEndingReminder = async (companyEmail, companyName, remainingDays) => {
+  try {
+
+    let mailOptions = {
+      from: 'androzer2@gmail.com',
+      to: email,
+      subject: 'Subscription Ends Soon',
+      html: `  
+      <div style="font-family: Helvetica, Arial, sans-serif; min-width: 1000px; overflow: auto; line-height: 2">
+      <div style="margin: 50px auto; width: 70%; padding: 20px 0">
+        <div style="border-bottom: 1px solid #eee">
+          <a href="#" style="font-size: 1.4em; color: #790505; text-decoration: none; font-weight: 600">
+            Event Brigadge
+          </a>
+        </div>
+        <p style="font-size: 1.1em">Hi there,</p>
+        <p>We hope you're enjoying your subscription to ${companyName}!</p>
+        <p>We wanted to remind you that your subscription is ending in ${remainingDays} days. Please ensure that you renew your subscription to continue accessing all the features and benefits of ${companyName}.</p>
+        <p>If you have any questions or need assistance with renewing your subscription, feel free to reach out to us. We're here to help!</p>
+        <p>Thanks for choosing ${companyName}.</p>
+        <p style="font-size: 0.9em;">Regards,<br />Event Brigadge Team</p>
+        <hr style="border: none; border-top: 1px solid #eee" />
+        <div style="float: right; padding: 8px 0; color: #aaa; font-size: 0.8em; line-height: 1; font-weight: 300">
+          <p>Event Brigadge</p>
+        </div>
+      </div>
+    </div>
+      `
+    };
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.log(error);
+      } else {
+        console.log(`reminder sent to email ${companyEmail}`);
+      }
+    })
+
+    return
+  } catch (error) {
+    console.error(error.message, "this is prob")
+  }
+}
+
 module.exports = {
   otpSendToMail,
-  sendCredentialsToEmployee
+  sendCredentialsToEmployee,
+  sendSubscriptionEndingReminder
 }

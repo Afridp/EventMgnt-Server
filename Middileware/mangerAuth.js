@@ -4,17 +4,16 @@ const Manager = require('../Models/Manager');
 const managerTokenVerify = async (req, res, next) => {
   try {
     let token = req.headers.authorization;
+    
     if (!token) {
       return res.status(403).json({ message: 'Access Denied' });
     }
 
     if (token.startsWith('Bearer')) { // Note the uppercase "Bearer" and the space after it
-
       token = token.slice(6).trim(); // Remove "Bearer " and trim whitespace
     }
 
     const verified = jwt.verify(token, process.env.TOKEN_KEY);
-
 
     // req.manager = verified.managerId;
 
@@ -39,7 +38,7 @@ const managerTokenVerify = async (req, res, next) => {
 
 const checkSubscription = async (req, res, next) => {
   try {
-    
+
     const managerId = req.headers.managerid
 
     const manager = await Manager.findById(managerId);
