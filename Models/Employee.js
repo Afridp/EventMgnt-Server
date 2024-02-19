@@ -7,9 +7,20 @@ const employeeSchema = new mongoose.Schema({
     email : {
         type : String
     },
-    isApproved : {
-        type : Boolean,
-        default : false
+    phoneNumber : {
+        type : Number
+    },
+    alternativePhoneNumber : {
+        type : Number
+    },
+    age : {
+        type : Number
+    },
+    gender : {
+        type : String
+    },
+    address : {
+        type : String
     },
     employeeId : {
         type : String
@@ -28,8 +39,13 @@ const employeeSchema = new mongoose.Schema({
         type : String
     },
     isBlocked : {
-        type :Boolean
-    }
+        type : Boolean,
+        default : false
+    },
+    isDataHave : {
+        type : Boolean,
+        default : false
+    },
     // mobile : { 
     //     type : Number
     // },

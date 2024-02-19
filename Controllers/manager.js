@@ -6,11 +6,12 @@ const Otp = require('../Models/Otp')
 const Event = require('../Models/Event')
 const Customer = require("../Models/Customer");
 const Booking = require('../Models/Booking');
+const Employees = require('../Models/Employee')
 
 
 const bcrypt = require('bcryptjs')
 const hash = require('../Utils/bcryptPassword')
-const { otpSendToMail } = require('../Utils/mailSender')
+const { otpSendToMail, sendCredentialsToEmployee } = require('../Utils/mailSender')
 const cloudinary = require('../Utils/cloudinary');
 const Employee = require('../Models/Employee');
 
@@ -241,6 +242,18 @@ const fetchAllBooking = async (req, res) => {
     }
 }
 
+const getNewBookings = async (req, res) => {
+    try {
+        const newBookings = await Booking.find()
+        if (newBookings) {
+            res.status(200).json({ newBookings })
+        }
+    } catch (error) {
+        console.error(error.message);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+}
+
 const getEventData = async (req, res) => {
     try {
         const { eventId } = req.query
@@ -265,8 +278,6 @@ const getTodaysEvents = async (req, res) => {
         const tomorrow = new Date(today);
         tomorrow.setDate(today.getDate() + 1); // Get tomorrow's date
 
-
-
         // Find bookings where startDate falls within today's date
         const todaysEvents = await Booking.find({
             startDate: {
@@ -278,9 +289,6 @@ const getTodaysEvents = async (req, res) => {
         // const todaysEvents = await Booking.find({ startDate: { $eq: today } })
 
         res.status(200).json({ todaysEvents })
-
-
-
 
 
 
@@ -398,56 +406,24 @@ const manageSubscription = async (req, res) => {
 //     }
 // }
 
-const getNewEmployees = async (req, res) => {
-    try {
-        const newEmployees = await Employee.find({ isApproved: false })
-
-        if (newEmployees) {
-            res.status(201).json({ newEmployees })
-        }
-    } catch (error) {
-        console.error(error.message);
-        res.status(500).json({ message: 'Internal Server Error' });
-    }
-}
-
-const approveEmployee = async (req, res) => {
-    try {
-        const { employeeId } = req.query
-
-        const employee = await Employee.findById(employeeId)
-        await sendToMail.sendCredentialsToEmployee(employee.email, employee.name)
-
-        await Employee.findByIdAndUpdate(employeeId, {
-            $set: {
-                isApproved: true
-            }
-        })
-        res.status(200).json({ message: "Done" })
-    } catch (error) {
-        console.error(error.message);
-        res.status(500).json({ message: 'Internal Server Error' });
-    }
-}
-
 const getAllEmployees = async (req, res) => {
     try {
-        const { search } = req.query
-        let query = { isApproved: true }
+        const { search } = req.query;
+        let query = {};
 
         if (search) {
-            query.name = { $regex: new RegExp(search, "i") }
+            query.name = { $regex: new RegExp(search, "i") };
         }
-        const employees = await Employee.find(query)
+        const employees = await Employees.find(query);
 
         if (employees) {
-            res.status(200).json({ employees })
+            res.status(200).json({ employees });
         }
     } catch (error) {
         console.error(error.message);
-        res.status(500).json({ message: 'Internal Server Error' });
+        res.status(500).json({ message: "Internal Server Error" });
     }
-}
+};
 
 const blockUnblockEmployee = async (req, res) => {
     try {
@@ -475,17 +451,41 @@ const blockUnblockEmployee = async (req, res) => {
     }
 }
 
-const getNewBookings = async (req, res) => {
+
+const addEmployee = async (req, res) => {
     try {
-        const newBookings = await Booking.find()
-        if (newBookings) {
-            res.status(200).json({ newBookings })
+        const { email } = req.body
+
+        const isEmployeeExist = await Employees.findOne({ email: email })
+
+        if (!isEmployeeExist) {
+
+            const newEmployee = new Employees({
+                email: email
+            })
+            let employee = await newEmployee.save()
+
+            const employeeId = await sendCredentialsToEmployee(employee.email)
+            employee.employeeId = employeeId
+            employee.employeePassword = employeeId
+
+            employee.save()
+
+            res.status(200).json({ message: "successfully added new employee,Employee Id and password sented" })
+        } else {
+            res.status(409).json({ message: 'This email is already added,try to add a new one' })
         }
+
     } catch (error) {
-        console.error(error.message);
-        res.status(500).json({ message: 'Internal Server Error' });
+        console.log(error.message);
+        res.status(500).json({ message: "Internal Server Error" })
     }
 }
+
+
+
+
+
 module.exports = {
     managerSignup,
     managerSignin,
@@ -500,10 +500,8 @@ module.exports = {
     getTodaysEvents,
     getUpcomingEvents,
     manageSubscription,
-    // isSubscribed,
-    getNewEmployees,
-    approveEmployee,
     getAllEmployees,
     blockUnblockEmployee,
-    getNewBookings
+    getNewBookings,
+    addEmployee
 }

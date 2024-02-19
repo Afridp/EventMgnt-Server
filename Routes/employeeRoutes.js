@@ -1,7 +1,8 @@
 const express = require('express');
-const { employeeRegister } = require('../Controllers/employee');
+const { employeeLogin, employeeSubmitDetails } = require('../Controllers/employee');
 const employeeRoute = express()
 
-employeeRoute.post('/register',employeeRegister)
+employeeRoute.post('/login',employeeLogin)
+employeeRoute.post('/submitDetails',employeeSubmitDetails)
 
 module.exports = employeeRoute

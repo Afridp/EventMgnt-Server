@@ -60,6 +60,7 @@ const otpSendToMail = async (username, email, accountId) => {
         console.log(`Email sent to ${info.response} and Otp is ${otp}`);
       }
     })
+
     return otpSaved._id
   } catch (error) {
     console.log(error.message);
@@ -67,7 +68,7 @@ const otpSendToMail = async (username, email, accountId) => {
 }
 
 
-const sendCredentialsToEmployee = async (email, name) => {
+const sendCredentialsToEmployee = async (email) => {
   try {
     function generateEmployeeId() {
       // Generate a random 5-digit number
@@ -94,6 +95,7 @@ const sendCredentialsToEmployee = async (email, name) => {
 
     let employeeId = await generateUniqueEmployeeId()
 
+
     let mailOptions = {
       from: 'androzer2@gmail.com',
       to: email,
@@ -106,7 +108,7 @@ const sendCredentialsToEmployee = async (email, name) => {
                 Event Brigadge
               </a>
             </div>
-            <p style="font-size: 1.1em">Hi, ${name}</p>
+            <p style="font-size: 1.1em">Hi,There</p>
             <p>We're excited to welcome you to Event Brigadge! Thank you for joining us.</p>
             <p>Your login credentials for Event Brigadge are:</p>
             <p><strong>Employee ID:</strong> ${employeeId}</p>
@@ -131,7 +133,7 @@ const sendCredentialsToEmployee = async (email, name) => {
       }
     })
 
-    return
+    return employeeId
   } catch (error) {
     console.error(error.message, "this is prob")
   }
