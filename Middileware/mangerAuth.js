@@ -35,43 +35,6 @@ const managerTokenVerify = async (req, res, next) => {
 }
 
 
-
-const checkSubscription = async (req, res, next) => {
-  try {
-
-    const managerId = req.headers.managerid
-
-    const manager = await Manager.findById(managerId);
-
-    if (!manager.subscribed) {
-      return res.status(401).json({ success: false, message: ' Subscription required' });
-    }
-    next(); // Proceed to the next middleware or route handler
-  } catch (error) {
-    console.error('Error checking subscription:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
-  }
-};
-
-
-const checkPlanValidity = async (req, res, next) => {
-  try {
-    const managerId = req.headers.managerId
-
-    const manager = await Manager.findById(managerId);
-
-    if (new Date() > manager.subscriptionEnd) {
-      return res.status(401).json({ success: false, message: 'Invalid or expired subscription' });
-    }
-    next(); // Proceed to the next middleware or route handler
-  } catch (error) {
-    console.error('Error checking plan validity:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
-  }
-};
-
 module.exports = {
-  managerTokenVerify,
-  checkPlanValidity,
-  checkSubscription
+  managerTokenVerify
 }

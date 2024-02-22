@@ -1,6 +1,10 @@
 const mongoose = require('mongoose')
 
 const eventSchema = new mongoose.Schema({
+    uuid: {
+        type: String, 
+        unique: true 
+    },
     eventName : {
         type : String
     },
@@ -12,6 +16,9 @@ const eventSchema = new mongoose.Schema({
     },
     imageBlob : {
         type : String
+    },
+    form : {
+        type : Array
     },
     list : {
         type : Boolean

@@ -28,7 +28,7 @@ const customerSignin = async (req, res) => {
                 const isPassword = await bcrypt.compare(password, existCustomer.password)
 
                 if (isPassword) {
-                    const token = jwt.sign({ clientId: existCustomer._id, role: 'client' }, process.env.TOKEN_KEY, { expiresIn: '1h' })
+                    const token = jwt.sign({ clientId: existCustomer._id, role: 'client' }, process.env.TOKEN_KEY, { expiresIn: '5min' })
                     res.status(200).json({ customerData: existCustomer, token, message: "login success" })
                 } else {
                     res.status(401).json({ message: 'Password is incorrect,please try again' })

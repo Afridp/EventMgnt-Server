@@ -1,6 +1,10 @@
 const mongoose = require('mongoose')
 
 const managerSchema = new mongoose.Schema({
+    uuid: {
+        type: String, 
+        unique: true 
+    },
     companyEmail: {
         type: String
     },

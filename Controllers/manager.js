@@ -1,14 +1,12 @@
 const jwt = require('jsonwebtoken')
 
-
 const Manager = require('../Models/Manager')
 const Otp = require('../Models/Otp')
 const Event = require('../Models/Event')
 const Customer = require("../Models/Customer");
 const Booking = require('../Models/Booking');
 const Employees = require('../Models/Employee')
-
-
+const { generateManagerUUID, generateEventUUID } = require('../Utils/UUID_Generator');
 const bcrypt = require('bcryptjs')
 const hash = require('../Utils/bcryptPassword')
 const { otpSendToMail, sendCredentialsToEmployee } = require('../Utils/mailSender')
@@ -34,8 +32,9 @@ const managerSignup = async (req, res) => {
             res.status(409).json({ message: "You have already registered with us,please login" })
         } else {
             const spassword = await hash.hashPassword(password)
-
+            const uuid = await generateManagerUUID();
             const newManagr = new Manager({
+                uuid: uuid,
                 companyEmail: cemail,
                 username: username,
                 companyMobile: cmobile,
@@ -45,7 +44,6 @@ const managerSignup = async (req, res) => {
 
             const managerData = newManagr.save()
 
-            // const token = jwt.sign({ managerId: managerData.id }, process.env.TOKEN_KEY, { expiresIn: '1h' })
             const otpId = await otpSendToMail((await managerData).username, (await managerData).companyEmail, (await managerData)._id)
 
             res.status(200).json({ managerId: (await managerData)._id, otpId, message: `otp has been sent to ${cemail}` })
@@ -136,44 +134,41 @@ const managerSignin = async (req, res) => {
 
 const getEvents = async (req, res) => {
     try {
-        const events = await Event.find()
-        res.status(200).json({ event: events })
+        const { managerUUID } = req.query;
+        // Find events where the UUID starts with the managerUUID
+        const events = await Event.find({ uuid: { $regex: `^${managerUUID}` } });
+        res.status(200).json({ event: events });
     } catch (error) {
         console.error(error.message);
-        res.status(500).json({ message: "Internal Server Error" })
+        res.status(500).json({ message: "Internal Server Error" });
     }
-}
+};
+
 
 const addNewEvents = async (req, res) => {
     try {
-        const { eventName, eventDescription, image } = req.body
-
+        const { eventName, eventDescription, image, managerUUID } = req.body
         const existEvent = await Event.findOne({ eventName: eventName })
-
+        const uuid = await generateEventUUID(managerUUID)
         if (!existEvent) {
             const uploaded = await cloudinary.uploader.upload(image, {
                 public_id: `events/${eventName}`,
                 // uload_preset: 'mi_default',
-
                 // check what is upload preset is
-
             })
             const newEvent = new Event({
                 eventName,
                 eventDescription,
                 eventImage: uploaded.secure_url,
+                uuid: uuid,
+                list: false
                 // imageBlob: image,
-                list: true
                 // Save the Cloudinary URL in the database
             })
-
             const savedEvent = await newEvent.save()
-
             res.status(201).json({ message: 'Event added successfully', event: savedEvent });
         } else {
-
-
-            res.status(403).json({ message: "Event you are trying to add is already exist" })
+            res.status(403).json({ message: "Event you are trying to add is already exist,Try to add with new event" })
         }
     } catch (error) {
         console.error('Error adding new event:', error.message);
@@ -220,7 +215,8 @@ const listingAndUnlist = async (req, res) => {
 
         res.status(200).json({
             message: 'Event updated successfully',
-            event: updatedEvent,
+            listValue: newListValue,
+
         });
     } catch (error) {
         console.error(error.message);
@@ -482,6 +478,36 @@ const addEmployee = async (req, res) => {
     }
 }
 
+const getFormOfEvent = async (req, res) => {
+    try {
+        const { eventUUID } = req.query
+        const event = await Event.findOne({ uuid: eventUUID }, { form: 1, _id: 0, eventName: 1 })
+      
+        res.status(200).json({ fields: event.form, eventName: event.eventName })
+    } catch (error) {
+        console.log(error.message);
+        res.status(500).json({ message: "Internal Server Error" })
+    }
+}
+
+const submitFormOfEvent = async (req, res) => {
+    try {
+        const { eventUUID, fields } = req.body
+   
+        await Event.findOneAndUpdate({ uuid: eventUUID }, {
+            $set: {
+                form: fields
+            }
+        })
+        res.status(200).json({ message: "successfully updated form" })
+
+    } catch (error) {
+        console.log(error.message);
+        res.status(500).json({ message: "Internal Server Error" })
+    }
+}
+
+
 
 
 
@@ -503,5 +529,7 @@ module.exports = {
     getAllEmployees,
     blockUnblockEmployee,
     getNewBookings,
-    addEmployee
+    addEmployee,
+    submitFormOfEvent,
+    getFormOfEvent
 }

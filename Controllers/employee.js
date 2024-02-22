@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken')
 
 
 const generateToken = (employeeId, role) => {
-    return jwt.sign({ employeeId, role }, process.env.TOKEN_KEY, { expiresIn: '1h' });
+    return jwt.sign({ employeeId, role }, process.env.TOKEN_KEY, { expiresIn: '5min' });
 };
 
 const employeeLogin = async (req, res) => {
