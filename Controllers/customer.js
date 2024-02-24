@@ -174,6 +174,18 @@ const getEvents = async (req, res) => {
     }
 };
 
+const getEventFormField = async (req,res) => {
+    try {
+        const {eventUUID} = req.query
+    
+        const eventFormFeilds = await Event.findOne({uuid:eventUUID},{form : 1,_id : 0})
+      
+        res.status(200).json({fields : eventFormFeilds.form})
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+}  
 
 const createEvent = async (req, res) => {
     try {
@@ -493,6 +505,7 @@ module.exports = {
     deleteBooked,
     updateProfilePic,
     updateProfile,
-    changePassword
+    changePassword,
+    getEventFormField
 
 }

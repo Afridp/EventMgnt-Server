@@ -1,7 +1,7 @@
 const express = require('express')
 const customerRoute = express()
 
-const { customerSignin, customerSignup, otpVerification, resendOtp, getEvents, createEvent, findCustomer, getBookings, getEvent, editBooked, deleteBooked, updateProfilePic, updateProfile, changePassword } = require('../Controllers/customer')
+const { customerSignin, customerSignup, otpVerification, resendOtp, getEvents, createEvent, findCustomer, getBookings, getEvent, editBooked, deleteBooked, updateProfilePic, updateProfile, changePassword, getEventFormField } = require('../Controllers/customer')
 
 customerRoute.post('/signup',customerSignup)
 customerRoute.post('/otpVerification',otpVerification)
@@ -10,6 +10,7 @@ customerRoute.post('/signin',customerSignin)
 customerRoute.get('/findCustomer/:customerId',findCustomer)
 
 customerRoute.get('/getEvents',getEvents)
+customerRoute.get('/getEventFormField',getEventFormField)
 customerRoute.post('/bookEvent/:customerId',createEvent)
 customerRoute.get('/getBookings/:customerId',getBookings)
 customerRoute.get('/getEvent/:eventId',getEvent)

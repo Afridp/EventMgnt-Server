@@ -176,6 +176,35 @@ const addNewEvents = async (req, res) => {
     }
 }
 
+const getFormOfEvent = async (req, res) => {
+    try {
+        const { eventUUID } = req.query
+        const event = await Event.findOne({ uuid: eventUUID }, { form: 1, _id: 0 })
+        res.status(200).json({ fields: event.form })
+    } catch (error) {
+        console.log(error.message);
+        res.status(500).json({ message: "Internal Server Error" })
+    }
+}
+
+const submitFormOfEvent = async (req, res) => {
+    try {
+        const { eventUUID, fields } = req.body
+
+        await Event.findOneAndUpdate({ uuid: eventUUID }, {
+            $set: {
+                form: fields,
+                list: true
+            }
+        })
+        res.status(200).json({ message: "successfully updated form" })
+
+    } catch (error) {
+        console.log(error.message);
+        res.status(500).json({ message: "Internal Server Error" })
+    }
+}
+
 const editEvent = async (req, res) => {
     try {
         const { eventName, eventDescription, _id } = req.body
@@ -478,34 +507,9 @@ const addEmployee = async (req, res) => {
     }
 }
 
-const getFormOfEvent = async (req, res) => {
-    try {
-        const { eventUUID } = req.query
-        const event = await Event.findOne({ uuid: eventUUID }, { form: 1, _id: 0, eventName: 1 })
-      
-        res.status(200).json({ fields: event.form, eventName: event.eventName })
-    } catch (error) {
-        console.log(error.message);
-        res.status(500).json({ message: "Internal Server Error" })
-    }
-}
 
-const submitFormOfEvent = async (req, res) => {
-    try {
-        const { eventUUID, fields } = req.body
-   
-        await Event.findOneAndUpdate({ uuid: eventUUID }, {
-            $set: {
-                form: fields
-            }
-        })
-        res.status(200).json({ message: "successfully updated form" })
 
-    } catch (error) {
-        console.log(error.message);
-        res.status(500).json({ message: "Internal Server Error" })
-    }
-}
+
 
 
 
