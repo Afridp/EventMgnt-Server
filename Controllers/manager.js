@@ -194,6 +194,7 @@ const submitFormOfEvent = async (req, res) => {
         await Event.findOneAndUpdate({ uuid: eventUUID }, {
             $set: {
                 form: fields,
+                
                 list: true
             }
         })
