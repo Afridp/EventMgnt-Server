@@ -1,17 +1,17 @@
 const express = require('express')
 const app = express()
 const cors = require('cors')
-const { startSubscriptionUpdateJob } = require('./Jobs/subscriptionUpdater');
 const db = require('./Configurations/dbConfig');
 const managerRoute = require('./Routes/managerRoutes')
 const customerRoute = require('./Routes/customerRoutes')
 const employeeRoute = require('./Routes/employeeRoutes');
+const { startSubscriptionUpdateJob } = require('./Jobs/subscriptionUpdater');
 const { subscriptionEndRemainderMail } = require('./Jobs/subscriptionEndMailRemainder');
 
 require('dotenv').config();
 // config of dotenv to access env file data
 
-// starting cronJobs
+// starting cronJobs(automation jobs)
 startSubscriptionUpdateJob()
 subscriptionEndRemainderMail()
 

@@ -7,6 +7,9 @@ const Otp = require('../Models/Otp')
 const Event = require('../Models/Event')
 const Booking = require("../Models/Booking");
 const cloudinary = require('../Utils/cloudinary')
+const createDynamicModel = require('../Models/DynamicBooking')
+const getType = require('../Utils/getType')
+
 
 
 
@@ -174,102 +177,120 @@ const getEvents = async (req, res) => {
     }
 };
 
-const getEventFormField = async (req,res) => {
+const getEventFormField = async (req, res) => {
     try {
-        const {eventUUID} = req.query
-    
-        const eventFormFeilds = await Event.findOne({uuid:eventUUID},{form : 1,_id : 0})
-      
-        res.status(200).json({fields : eventFormFeilds.form})
+        const { eventUUID } = req.query
+
+        const eventFormFeilds = await Event.findOne({ uuid: eventUUID }, { form: 1, _id: 0 })
+
+        res.status(200).json({ fields: eventFormFeilds.form })
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Internal server error" });
     }
-}  
+}
 
-const createEvent = async (req, res) => {
+// const {
+//     startDate,
+//     endDate,
+//     guestRequirement,
+//     cateringNeeds,
+//     eventName,
+//     eventCategory,
+//     venueName,
+//     venueType,
+//     noofGuests,
+//     numberOfServices,
+//     foodPreference,
+//     cuisines,
+//     desiredEntertainment,
+//     entertainer,
+//     eventTheme,
+//     otherTheme,
+//     themeImage,
+//     audioVisual,
+//     techSupport,
+//     additionalRequirement,
+//     name,
+//     email,
+//     phoneNumber,
+//     alternativePhoneNumber,
+//     location,
+// } = req.body;
+// console.log(req);
+
+const bookEvent = async (req, res) => {
     try {
-        const {
-            startDate,
-            endDate,
-            guestRequirement,
-            cateringNeeds,
-            eventName,
-            eventCategory,
-            venueName,
-            venueType,
-            noofGuests,
-            numberOfServices,
-            foodPreference,
-            cuisines,
-            desiredEntertainment,
-            entertainer,
-            eventTheme,
-            otherTheme,
-            themeImage,
-            audioVisual,
-            techSupport,
-            additionalRequirement,
-            name,
-            email,
-            phoneNumber,
-            alternativePhoneNumber,
-            location,
-        } = req.body;
         const { customerId } = req.params;
+        const { eventUUID } = req.query
+        const { formValues, formData } = req.body
+        let transformedSchema = {}
 
-       
-
-        let image = null
-        if (themeImage) {
-            let uploaded = await cloudinary.uploader.upload(themeImage, {
-                public_id: `booking/${eventName}`,
-                // uload_preset: 'mi_default',
-
-                // check what is upload preset is
-            });
-            image = uploaded.secure_url
-        }
-
-        const newEvent = new Booking({
-            customerId,
-            startDate,
-            endDate,
-            guestRequirement,
-            cateringNeeds,
-            eventName,
-            eventCategory,
-            venueName,
-            venueType,
-            venueLocation: location,
-            audioVisual,
-            noofGuests,
-            numberOfServices,
-            foodPreference,
-            cuisines,
-            desiredEntertainment,
-            entertainer,
-            eventTheme,
-            otherTheme,
-            themeImage: image,
-            techSupport,
-            additionalRequirement,
-            name,
-            email,
-            phoneNumber,
-            alternativePhoneNumber,
+        formData.forEach(field => {
+            const { label, type, required } = field;
+            transformedSchema[label] = { type: getType(type), required };
         });
 
-        const savedEvent = await newEvent.save();
+        const bookingModel = createDynamicModel(eventUUID, transformedSchema)
 
-        res.status(201).json({ message: "Event created successfully", event: savedEvent });
+        formValues["customerId"] = customerId
+       
+
+        // let image = null
+        // if (themeImage) {
+        //     let uploaded = await cloudinary.uploader.upload(themeImage, {
+        //         public_id: `booking/${eventName}`,
+        //         // uload_preset: 'mi_default',
+
+        //         // check what is upload preset is
+        //     });
+        //     image = uploaded.secure_url
+        // }
+
+        const newBook = new bookingModel(formValues)
+
+        await newBook.save()
+
+
+
+
+        // const savedEvent = await newEvent.save();
+
+        res.status(201).json({ message: "Event created successfully" });
     } catch (error) {
         console.log(error);
         res.status(500).json({ message: "internal server Error" });
     }
 };
 
-
+// const newEvent = new Booking({
+//     customerId,
+//     startDate,
+//     endDate,
+//     guestRequirement,
+//     cateringNeeds,
+//     eventName,
+//     eventCategory,
+//     venueName,
+//     venueType,
+//     venueLocation: location,
+//     audioVisual,
+//     noofGuests,
+//     numberOfServices,
+//     foodPreference,
+//     cuisines,
+//     desiredEntertainment,
+//     entertainer,
+//     eventTheme,
+//     otherTheme,
+//     themeImage: image,
+//     techSupport,
+//     additionalRequirement,
+//     name,
+//     email,
+//     phoneNumber,
+//     alternativePhoneNumber,
+// });
 const getBookings = async (req, res) => {
     try {
         const { customerId } = req.params
@@ -295,7 +316,7 @@ const getBookings = async (req, res) => {
             bookings = await Booking.find(query)
         }
         if (bookings.length) {
-            
+
             res.status(200).json({ bookings })
         } else {
             res.status(204).json({ message: "no data" })
@@ -399,7 +420,7 @@ const deleteBooked = async (req, res) => {
         const today = new Date();
         const tenDaysAgo = new Date(today);
         tenDaysAgo.setDate(today.getDate() - 10);
-        0
+
 
 
         // if (eventStartDate > tenDaysAgo) {
@@ -497,7 +518,7 @@ module.exports = {
     otpVerification,
     resendOtp,
     getEvents,
-    createEvent,
+    bookEvent,
     findCustomer,
     getBookings,
     getEvent,
