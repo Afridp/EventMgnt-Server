@@ -26,10 +26,10 @@ managerRoute.patch('/blockUnblockEmployee', blockUnblockEmployee)
 managerRoute.get('/getNewBookings', getNewBookings)
 managerRoute.get('/getFormOfEvent', getFormOfEvent)
 managerRoute.post('/submitForm', submitFormOfEvent)
-
+ 
 
 // managerRoute.get('/isSubscribed', isSubscribed)
 
 
 
-module.exports = managerRoute;
+module.exports = managerRoute; 
