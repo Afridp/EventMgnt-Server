@@ -12,6 +12,7 @@ const hash = require('../Utils/bcryptPassword')
 const { otpSendToMail, sendCredentialsToEmployee } = require('../Utils/mailSender')
 const cloudinary = require('../Utils/cloudinary');
 const Employee = require('../Models/Employee');
+const Form = require('../Models/Form');
 
 
 
@@ -134,9 +135,9 @@ const managerSignin = async (req, res) => {
 
 const getEvents = async (req, res) => {
     try {
-        const { managerUUID } = req.query;
+        const { managerUUID, managerId } = req.query;
         // Find events where the UUID starts with the managerUUID
-        const events = await Event.find({ uuid: { $regex: `^${managerUUID}` } });
+        const events = await Event.find({ managerId: managerId });
         res.status(200).json({ event: events });
     } catch (error) {
         console.error(error.message);
@@ -147,10 +148,11 @@ const getEvents = async (req, res) => {
 
 const addNewEvents = async (req, res) => {
     try {
-        const { eventName, eventDescription, image, managerUUID } = req.body
+        const { eventName, eventDescription, image, managerUUID, managerId } = req.body
         const existEvent = await Event.findOne({ eventName: eventName })
-        const uuid = await generateEventUUID(managerUUID)
         if (!existEvent) {
+            const uuid = await generateEventUUID(managerUUID)
+
             const uploaded = await cloudinary.uploader.upload(image, {
                 public_id: `events/${eventName}`,
                 // uload_preset: 'mi_default',
@@ -161,7 +163,9 @@ const addNewEvents = async (req, res) => {
                 eventDescription,
                 eventImage: uploaded.secure_url,
                 uuid: uuid,
+                managerId: managerId,
                 list: false
+
                 // imageBlob: image,
                 // Save the Cloudinary URL in the database
             })
@@ -178,9 +182,13 @@ const addNewEvents = async (req, res) => {
 
 const getFormOfEvent = async (req, res) => {
     try {
-        const { eventUUID } = req.query
-        const event = await Event.findOne({ uuid: eventUUID }, { form: 1, _id: 0 })
-        res.status(200).json({ fields: event.form })
+        const { eventId } = req.query
+
+        const event = await Form.findOne({ eventId: eventId })
+        if (!event?.formFields) {
+            return res.status(200).json({ fields: [] })
+        }
+        res.status(200).json({ fields: event.formFields })
     } catch (error) {
         console.log(error.message);
         res.status(500).json({ message: "Internal Server Error" })
@@ -189,16 +197,42 @@ const getFormOfEvent = async (req, res) => {
 
 const submitFormOfEvent = async (req, res) => {
     try {
-        const { eventUUID, fields } = req.body
+        const { eventId, fields, managerId} = req.body
 
-        await Event.findOneAndUpdate({ uuid: eventUUID }, {
-            $set: {
-                form: fields,
-                
-                list: true
-            }
-        })
-        res.status(200).json({ message: "successfully updated form" })
+        const isEventFormExist = await Form.findOne({ eventId: eventId })
+
+        if (isEventFormExist) {
+            await Form.findByIdAndUpdate(isEventFormExist._id, {
+                $set: {
+                    formFields: fields
+                }
+            })
+            res.status(200).json({ message: "successfully updated form" })
+        } else {
+            const createdForm = new Form({
+                managerId: managerId,
+                eventId: eventId,
+                formFields: fields,
+               
+            })
+            await createdForm.save()
+
+            await Event.findByIdAndUpdate(eventId,{
+                $set : {
+                    list : true
+                }
+            })
+            res.status(200).json({ message: "successfully created form" })
+        }
+
+        // await Forms.f({ uuid: eventUUID }, {
+        //     $set: {
+        //         form: fields,
+
+        //         list: true
+        //     }
+        // })
+
 
     } catch (error) {
         console.log(error.message);

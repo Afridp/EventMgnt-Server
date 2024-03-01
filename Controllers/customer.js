@@ -9,6 +9,7 @@ const Booking = require("../Models/Booking");
 const cloudinary = require('../Utils/cloudinary')
 const createDynamicModel = require('../Models/DynamicBooking')
 const getType = require('../Utils/getType')
+const Form = require('../Models/Form')
 
 
 
@@ -179,11 +180,11 @@ const getEvents = async (req, res) => {
 
 const getEventFormField = async (req, res) => {
     try {
-        const { eventUUID } = req.query
+        const { eventId } = req.query
+        
+        const eventFormFeilds = await Form.findOne({eventId:eventId})
 
-        const eventFormFeilds = await Event.findOne({ uuid: eventUUID }, { form: 1, _id: 0 })
-
-        res.status(200).json({ fields: eventFormFeilds.form })
+        res.status(200).json({ fields: eventFormFeilds.formFields })
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Internal server error" });
@@ -222,18 +223,28 @@ const getEventFormField = async (req, res) => {
 const bookEvent = async (req, res) => {
     try {
         const { customerId } = req.params;
-        const { eventUUID } = req.query
-        const { formValues, formData } = req.body
-        let transformedSchema = {}
+        const { eventId } = req.query
+        const { formValues } = req.body
 
-        formData.forEach(field => {
-            const { label, type, required } = field;
-            transformedSchema[label] = { type: getType(type), required };
-        });
 
-        const bookingModel = createDynamicModel(eventUUID, transformedSchema)
+        console.log(formValues);
+        const newBooking = new Booking({
+            formData :  formValues,
+            customerId ,
+            eventId
+        })
 
-        formValues["customerId"] = customerId
+        await newBooking.save()
+        // let transformedSchema = {}
+
+        // formData.forEach(field => {
+        //     const { label, type, required } = field;
+        //     transformedSchema[label] = { type: getType(type), required };
+        // });
+
+        // const bookingModel = createDynamicModel(eventUUID, transformedSchema)
+
+        // formValues["customerId"] = customerId
        
 
         // let image = null
@@ -247,9 +258,9 @@ const bookEvent = async (req, res) => {
         //     image = uploaded.secure_url
         // }
 
-        const newBook = new bookingModel(formValues)
+        // const newBook = new bookingModel(formValues)
 
-        await newBook.save()
+        // await newBook.save()
 
 
 
@@ -313,10 +324,10 @@ const getBookings = async (req, res) => {
                     .sort({ startDate: -1 })
             }
         } else {
-            bookings = await Booking.find(query)
+            bookings = await Booking.find(query,{formData : 1}).populate('eventId')
         }
         if (bookings.length) {
-
+          
             res.status(200).json({ bookings })
         } else {
             res.status(204).json({ message: "no data" })
@@ -326,15 +337,15 @@ const getBookings = async (req, res) => {
         res.status(500).json({ message: "internal server Error" })
     }
 }
-
-const getEvent = async (req, res) => {
+      
+const getEditingEventData = async (req, res) => {
     try {
-        const { eventId } = req.params
-
-        const event = await Booking.findById(eventId)
-
+        const { bookingId } = req.params
+        const event = await Booking.findById(bookingId)
+        console.log(event.formData);
+      
         if (event) {
-            res.status(200).json({ event })
+            res.status(200).json({ formData:event.formData })
         } else {
             res.status(204).json({ message: "There is no such event in our database" })
         }
@@ -521,7 +532,7 @@ module.exports = {
     bookEvent,
     findCustomer,
     getBookings,
-    getEvent,
+    getEditingEventData,
     editBooked,
     deleteBooked,
     updateProfilePic,

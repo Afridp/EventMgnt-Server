@@ -5,6 +5,10 @@ const eventSchema = new mongoose.Schema({
         type: String, 
         unique: true 
     },
+    managerId : {
+        type : mongoose.Schema.Types.ObjectId,
+        ref : 'Manager'
+    },
     eventName : {
         type : String
     },
@@ -17,9 +21,10 @@ const eventSchema = new mongoose.Schema({
     imageBlob : {
         type : String
     },
-    form : {
-        type : Array
-    },
+    // form : {
+    //     type : Array
+    // },
+
     list : {
         type : Boolean
     }
