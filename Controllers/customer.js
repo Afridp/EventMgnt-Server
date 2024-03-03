@@ -227,7 +227,7 @@ const bookEvent = async (req, res) => {
         const { formValues } = req.body
 
 
-        console.log(formValues);
+     
         const newBooking = new Booking({
             formData :  formValues,
             customerId ,
@@ -326,6 +326,7 @@ const getBookings = async (req, res) => {
         } else {
             bookings = await Booking.find(query,{formData : 1}).populate('eventId')
         }
+        console.log(bookings);
         if (bookings.length) {
           
             res.status(200).json({ bookings })
@@ -342,7 +343,7 @@ const getEditingEventData = async (req, res) => {
     try {
         const { bookingId } = req.params
         const event = await Booking.findById(bookingId)
-        console.log(event.formData);
+        console.log(event.formData,"haaat");
       
         if (event) {
             res.status(200).json({ formData:event.formData })
@@ -366,7 +367,7 @@ const editBooked = async (req, res) => {
             venueName,
             venueType,
             noofGuests,
-            numberOfServices,
+            numberOfServices, 
             foodPreference,
             cuisines,
             desiredEntertainment,
@@ -539,5 +540,4 @@ module.exports = {
     updateProfile,
     changePassword,
     getEventFormField
-
 }
