@@ -181,10 +181,14 @@ const getEvents = async (req, res) => {
 const getEventFormField = async (req, res) => {
     try {
         const { eventId } = req.query
-        
-        const eventFormFeilds = await Form.findOne({eventId:eventId})
 
-        res.status(200).json({ fields: eventFormFeilds.formFields })
+        const eventFormFeilds = await Form.findOne({ eventId: eventId })
+        if (eventFormFeilds) {
+
+            res.status(200).json({ fields: eventFormFeilds.formFields, personalInfo: eventFormFeilds.personalFormFields })
+        } 
+        res.status(400)
+
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Internal server error" });
@@ -227,10 +231,10 @@ const bookEvent = async (req, res) => {
         const { formValues } = req.body
 
 
-     
+
         const newBooking = new Booking({
-            formData :  formValues,
-            customerId ,
+            formData: formValues,
+            customerId,
             eventId
         })
 
@@ -245,7 +249,7 @@ const bookEvent = async (req, res) => {
         // const bookingModel = createDynamicModel(eventUUID, transformedSchema)
 
         // formValues["customerId"] = customerId
-       
+
 
         // let image = null
         // if (themeImage) {
@@ -324,11 +328,11 @@ const getBookings = async (req, res) => {
                     .sort({ startDate: -1 })
             }
         } else {
-            bookings = await Booking.find(query,{formData : 1}).populate('eventId')
+            bookings = await Booking.find(query, { formData: 1 }).populate('eventId')
         }
         console.log(bookings);
         if (bookings.length) {
-          
+
             res.status(200).json({ bookings })
         } else {
             res.status(204).json({ message: "no data" })
@@ -338,15 +342,15 @@ const getBookings = async (req, res) => {
         res.status(500).json({ message: "internal server Error" })
     }
 }
-      
+
 const getEditingEventData = async (req, res) => {
     try {
         const { bookingId } = req.params
         const event = await Booking.findById(bookingId)
-        console.log(event.formData,"haaat");
-      
+        console.log(event.formData, "haaat");
+
         if (event) {
-            res.status(200).json({ formData:event.formData })
+            res.status(200).json({ formData: event.formData })
         } else {
             res.status(204).json({ message: "There is no such event in our database" })
         }
@@ -367,7 +371,7 @@ const editBooked = async (req, res) => {
             venueName,
             venueType,
             noofGuests,
-            numberOfServices, 
+            numberOfServices,
             foodPreference,
             cuisines,
             desiredEntertainment,

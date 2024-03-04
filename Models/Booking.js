@@ -16,6 +16,9 @@ const bookingSchema = new mongoose.Schema({
   formData: {
     type: Object
   },
+  personalData : {
+    type : Object
+  },
   isAccepted: {
     type: Boolean,
     default: false

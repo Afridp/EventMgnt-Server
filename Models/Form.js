@@ -10,8 +10,12 @@ const formsSchema = new mongoose.Schema({
         ref: 'Manager'
     },
     formFields: {
-        type : Array
+        type: Array
+    },
+    personalFormFields: {
+      type : Boolean
     }
+
 })
 
 module.exports = mongoose.model('Form', formsSchema)

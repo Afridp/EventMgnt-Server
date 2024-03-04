@@ -188,7 +188,7 @@ const getFormOfEvent = async (req, res) => {
         if (!event?.formFields) {
             return res.status(200).json({ fields: [] })
         }
-        res.status(200).json({ fields: event.formFields })
+        res.status(200).json({ fields: event.formFields , isChecked : event.personalFormFields})
     } catch (error) {
         console.log(error.message);
         res.status(500).json({ message: "Internal Server Error" })
@@ -197,14 +197,15 @@ const getFormOfEvent = async (req, res) => {
 
 const submitFormOfEvent = async (req, res) => {
     try {
-        const { eventId, fields, managerId} = req.body
+        const { eventId, fields, managerId, isChecked } = req.body
 
         const isEventFormExist = await Form.findOne({ eventId: eventId })
 
         if (isEventFormExist) {
             await Form.findByIdAndUpdate(isEventFormExist._id, {
                 $set: {
-                    formFields: fields
+                    formFields: fields,
+                    personalFormFields : isChecked
                 }
             })
             res.status(200).json({ message: "successfully updated form" })
@@ -213,13 +214,14 @@ const submitFormOfEvent = async (req, res) => {
                 managerId: managerId,
                 eventId: eventId,
                 formFields: fields,
-               
+                personalFormFields : isChecked
+
             })
             await createdForm.save()
 
-            await Event.findByIdAndUpdate(eventId,{
-                $set : {
-                    list : true
+            await Event.findByIdAndUpdate(eventId, {
+                $set: {
+                    list: true
                 }
             })
             res.status(200).json({ message: "successfully created form" })
@@ -569,6 +571,7 @@ module.exports = {
     blockUnblockEmployee,
     getNewBookings,
     addEmployee,
+    // submitPersonalDetailsCheck,
     submitFormOfEvent,
     getFormOfEvent
 }
