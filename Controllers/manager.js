@@ -226,7 +226,7 @@ const submitFormOfEvent = async (req, res) => {
             })
             res.status(200).json({ message: "successfully created form" })
         }
-
+        
         // await Forms.f({ uuid: eventUUID }, {
         //     $set: {
         //         form: fields,

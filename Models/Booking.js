@@ -22,6 +22,9 @@ const bookingSchema = new mongoose.Schema({
   isAccepted: {
     type: Boolean,
     default: false
+  },
+  paidAmount : {
+    type : Number
   }
 });
 

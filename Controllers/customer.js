@@ -7,9 +7,8 @@ const Otp = require('../Models/Otp')
 const Event = require('../Models/Event')
 const Booking = require("../Models/Booking");
 const cloudinary = require('../Utils/cloudinary')
-const createDynamicModel = require('../Models/DynamicBooking')
-const getType = require('../Utils/getType')
 const Form = require('../Models/Form')
+const { default: Stripe } = require('stripe')
 
 
 
@@ -32,7 +31,7 @@ const customerSignin = async (req, res) => {
                 const isPassword = await bcrypt.compare(password, existCustomer.password)
 
                 if (isPassword) {
-                    const token = jwt.sign({ clientId: existCustomer._id, role: 'client' }, process.env.TOKEN_KEY, { expiresIn: '5min' })
+                    const token = jwt.sign({ clientId: existCustomer._id, role: 'client' }, process.env.TOKEN_KEY, { expiresIn: '4h' })
                     res.status(200).json({ customerData: existCustomer, token, message: "login success" })
                 } else {
                     res.status(401).json({ message: 'Password is incorrect,please try again' })
@@ -186,7 +185,7 @@ const getEventFormField = async (req, res) => {
         if (eventFormFeilds) {
 
             res.status(200).json({ fields: eventFormFeilds.formFields, personalInfo: eventFormFeilds.personalFormFields })
-        } 
+        }
         res.status(400)
 
     } catch (error) {
@@ -228,12 +227,13 @@ const bookEvent = async (req, res) => {
     try {
         const { customerId } = req.params;
         const { eventId } = req.query
-        const { formValues } = req.body
+        const { formValues, personalValues } = req.body
 
 
 
         const newBooking = new Booking({
             formData: formValues,
+            personalData: personalValues,
             customerId,
             eventId
         })
@@ -277,6 +277,42 @@ const bookEvent = async (req, res) => {
         res.status(500).json({ message: "internal server Error" });
     }
 };
+
+const paymentCheckout = async (req, res) => {
+    try {
+        const stripeInstance = Stripe(process.env.STRIPE_SECRET_KEY)
+        const { eventId, personalValues, formValues, amt } = req.body
+
+        const event = await Event.findById(eventId)
+        // TODO: change the urls according to manager url when manager sharded
+        let success_url = `http://localhost:3000/payment?eventId=${eventId}&personalValues=${encodeURIComponent(JSON.stringify(personalValues))}&formValues=${encodeURIComponent(JSON.stringify(formValues))}`;
+        let cancel_url = `http://localhost:3000/events/book/${eventId}`
+        const lineItems = [{
+            price_data: {
+                currency: "inr",
+                product_data: {
+                    name: event.eventName,
+
+                },
+                unit_amount: amt * 100
+            },
+            quantity: 1
+        }]
+
+        const session = await stripeInstance.checkout.sessions.create({
+            payment_method_types: ["card"],
+            line_items: lineItems,
+            mode: "payment",
+            success_url: success_url,
+            cancel_url: cancel_url
+        })
+
+        res.status(200).json({ sessionId: session.id })
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "internal server Error" });
+    }
+}
 
 // const newEvent = new Booking({
 //     customerId,
@@ -330,7 +366,6 @@ const getBookings = async (req, res) => {
         } else {
             bookings = await Booking.find(query, { formData: 1 }).populate('eventId')
         }
-        console.log(bookings);
         if (bookings.length) {
 
             res.status(200).json({ bookings })
@@ -343,14 +378,13 @@ const getBookings = async (req, res) => {
     }
 }
 
-const getEditingEventData = async (req, res) => {
+const getSeeMoreEventData = async (req, res) => {
     try {
         const { bookingId } = req.params
         const event = await Booking.findById(bookingId)
-        console.log(event.formData, "haaat");
 
         if (event) {
-            res.status(200).json({ formData: event.formData })
+            res.status(200).json({ formData: event.formData, personalData: event.personalData })
         } else {
             res.status(204).json({ message: "There is no such event in our database" })
         }
@@ -362,7 +396,7 @@ const getEditingEventData = async (req, res) => {
 
 const editBooked = async (req, res) => {
     try {
-        console.log("ahsjkdfhjklasdhf");
+    
         const {
             guestRequirement,
             cateringNeeds,
@@ -537,11 +571,12 @@ module.exports = {
     bookEvent,
     findCustomer,
     getBookings,
-    getEditingEventData,
+    getSeeMoreEventData,
     editBooked,
     deleteBooked,
     updateProfilePic,
     updateProfile,
     changePassword,
-    getEventFormField
+    getEventFormField,
+    paymentCheckout
 }
