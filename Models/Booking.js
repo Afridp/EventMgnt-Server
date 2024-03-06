@@ -16,15 +16,18 @@ const bookingSchema = new mongoose.Schema({
   formData: {
     type: Object
   },
-  personalData : {
-    type : Object
+  personalData: {
+    type: Object
   },
   isAccepted: {
     type: Boolean,
     default: false
   },
-  paidAmount : {
-    type : Number
+  status: {
+    type: String
+  },
+  paidAmount: {
+    type: Number
   }
 });
 

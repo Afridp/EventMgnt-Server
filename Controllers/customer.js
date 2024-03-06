@@ -230,12 +230,13 @@ const bookEvent = async (req, res) => {
         const { formValues, personalValues } = req.body
 
 
-
         const newBooking = new Booking({
             formData: formValues,
             personalData: personalValues,
             customerId,
-            eventId
+            eventId,
+            isAccepted : false,
+            status : "PENDING"
         })
 
         await newBooking.save()
@@ -364,7 +365,7 @@ const getBookings = async (req, res) => {
                     .sort({ startDate: -1 })
             }
         } else {
-            bookings = await Booking.find(query, { formData: 1 }).populate('eventId')
+            bookings = await Booking.find(query, { status: 1  }).populate('eventId')
         }
         if (bookings.length) {
 

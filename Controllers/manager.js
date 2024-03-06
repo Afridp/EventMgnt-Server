@@ -13,6 +13,7 @@ const { otpSendToMail, sendCredentialsToEmployee } = require('../Utils/mailSende
 const cloudinary = require('../Utils/cloudinary');
 const Employee = require('../Models/Employee');
 const Form = require('../Models/Form');
+const { default: Stripe } = require('stripe')
 
 
 
@@ -371,6 +372,42 @@ const getUpcomingEvents = async (req, res) => {
     } catch (error) {
         console.error(error.message);
         res.status(500).json({ message: 'Internal Server Error' });
+    }
+}
+
+const subscriptionCheckout = async (req, res) => {
+    try {
+        const stripeInstance = Stripe(process.env.STRIPE_SECRET_KEY)
+        const { selectedPlan, amnt } = req.body
+
+        // const event = await Event.findById(eventId)
+        // TODO: change the urls according to manager url when manager sharded
+        let success_url = `http://localhost:3000/manager/subscibed?plan=${selectedPlan}`;
+        let cancel_url = `http://localhost:3000/manager/pro`
+        const lineItems = [{
+            price_data: {
+                currency: "inr",
+                product_data: {
+                    name: `Choosed Plan ${selectedPlan}`,
+
+                },
+                unit_amount: amnt * 100
+            },
+            quantity: 1
+        }]
+
+        const session = await stripeInstance.checkout.sessions.create({
+            payment_method_types: ["card"],
+            line_items: lineItems,
+            mode: "payment",
+            success_url: success_url,
+            cancel_url: cancel_url
+        })
+
+        res.status(200).json({ sessionId: session.id })
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "internal server Error" });
     }
 }
 
