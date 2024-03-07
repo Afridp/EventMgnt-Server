@@ -1,6 +1,6 @@
 const express = require('express');
 const managerRoute = express()
-const { managerSignup, managerSignin, otpVerification, resendOtp, addNewEvents, getEvents, editEvent, listingAndUnlist, fetchAllBooking, getEventData, getTodaysEvents, getUpcomingEvents, manageSubscription, isSubscribed, getNewEmployees, approveEmployee, getAllEmployees, blockUnblockEmployee, getNewBookings, addEmployee, submitFormOfEvent, getFormOfEvent } = require('../Controllers/manager');
+const { managerSignup, managerSignin, otpVerification, resendOtp, addNewEvents, getEvents, editEvent, listingAndUnlist, fetchAllBooking, getEventData, getTodaysEvents, getUpcomingEvents, manageSubscription, isSubscribed, getNewEmployees, approveEmployee, getAllEmployees, blockUnblockEmployee, getNewBookings, addEmployee, submitFormOfEvent, getFormOfEvent, getEmployees, approveEvent } = require('../Controllers/manager');
 const { managerTokenVerify } = require("../Middileware/mangerAuth");
 
 managerRoute.post('/signup', managerSignup)
@@ -26,6 +26,8 @@ managerRoute.patch('/blockUnblockEmployee', blockUnblockEmployee)
 managerRoute.get('/getNewBookings', getNewBookings)
 managerRoute.get('/getFormOfEvent', getFormOfEvent)
 managerRoute.post('/submitForm', submitFormOfEvent)
+managerRoute.get('/getEmployees',getEmployees)
+managerRoute.post('/approveEvent',approveEvent)
  
 
 // managerRoute.get('/isSubscribed', isSubscribed)

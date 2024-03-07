@@ -3,7 +3,6 @@ const jwt = require('jsonwebtoken')
 const Manager = require('../Models/Manager')
 const Otp = require('../Models/Otp')
 const Event = require('../Models/Event')
-const Customer = require("../Models/Customer");
 const Booking = require('../Models/Booking');
 const Employees = require('../Models/Employee')
 const { generateManagerUUID, generateEventUUID } = require('../Utils/UUID_Generator');
@@ -189,7 +188,7 @@ const getFormOfEvent = async (req, res) => {
         if (!event?.formFields) {
             return res.status(200).json({ fields: [] })
         }
-        res.status(200).json({ fields: event.formFields , isChecked : event.personalFormFields})
+        res.status(200).json({ fields: event.formFields, isChecked: event.personalFormFields })
     } catch (error) {
         console.log(error.message);
         res.status(500).json({ message: "Internal Server Error" })
@@ -206,7 +205,7 @@ const submitFormOfEvent = async (req, res) => {
             await Form.findByIdAndUpdate(isEventFormExist._id, {
                 $set: {
                     formFields: fields,
-                    personalFormFields : isChecked
+                    personalFormFields: isChecked
                 }
             })
             res.status(200).json({ message: "successfully updated form" })
@@ -215,7 +214,7 @@ const submitFormOfEvent = async (req, res) => {
                 managerId: managerId,
                 eventId: eventId,
                 formFields: fields,
-                personalFormFields : isChecked
+                personalFormFields: isChecked
 
             })
             await createdForm.save()
@@ -227,7 +226,7 @@ const submitFormOfEvent = async (req, res) => {
             })
             res.status(200).json({ message: "successfully created form" })
         }
-        
+
         // await Forms.f({ uuid: eventUUID }, {
         //     $set: {
         //         form: fields,
@@ -293,9 +292,8 @@ const listingAndUnlist = async (req, res) => {
 
 const fetchAllBooking = async (req, res) => {
     try {
-        // const { managerId } = req.params
 
-        const bookings = await Booking.find()
+        const bookings = await Booking.find({isAccepted: true}).populate("eventId")
 
         res.status(200).json({ bookings })
 
@@ -307,7 +305,7 @@ const fetchAllBooking = async (req, res) => {
 
 const getNewBookings = async (req, res) => {
     try {
-        const newBookings = await Booking.find()
+        const newBookings = await Booking.find({ isAccepted: false }).populate("eventId")
         if (newBookings) {
             res.status(200).json({ newBookings })
         }
@@ -323,7 +321,7 @@ const getEventData = async (req, res) => {
 
         const eventData = await Booking.findById(eventId)
 
-        res.status(200).json({ eventData })
+        res.status(200).json({ eventData: eventData.formData, personalData: eventData.personalData })
     } catch (error) {
         console.error(error.message);
         res.status(500).json({ message: 'Internal Server Error' });
@@ -581,9 +579,36 @@ const addEmployee = async (req, res) => {
     }
 }
 
+const getEmployees = async (req, res) => {
+    try {
+        const employees = await Employees.find({}, { name: 1 })
 
+        res.status(200).json({ employees })
+    } catch (error) {
+        console.log(error.message);
+        res.status(500).json({ message: "Internal Server Error" })
+    }
+}
 
+const approveEvent = async (req, res) => {
+    try {
+        const { eventId } = req.body
+        console.log(eventId);
+        const updated = await Booking.findByIdAndUpdate(eventId, {
+            $set: {
+                isAccepted: true,
+                status: "APPROVED"
+            }
+        })
+        if (updated) {
 
+            res.status(200).json({ updatedEvent: updated._id, message: "Approved" })
+        }
+    } catch (error) {
+        console.log(error.message);
+        res.status(500).json({ message: "Internal Server Error" })
+    }
+}
 
 
 
@@ -608,7 +633,8 @@ module.exports = {
     blockUnblockEmployee,
     getNewBookings,
     addEmployee,
-    // submitPersonalDetailsCheck,
     submitFormOfEvent,
-    getFormOfEvent
+    getFormOfEvent,
+    getEmployees,
+    approveEvent
 }

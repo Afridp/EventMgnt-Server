@@ -28,8 +28,11 @@ const bookingSchema = new mongoose.Schema({
   },
   paidAmount: {
     type: Number
+  },
+  dueDate : {
+    type : Date
   }
-});
+},{timestamps : true});
 
 
 

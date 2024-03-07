@@ -227,8 +227,7 @@ const bookEvent = async (req, res) => {
     try {
         const { customerId } = req.params;
         const { eventId } = req.query
-        const { formValues, personalValues } = req.body
-
+        const { formValues, personalValues, amount } = req.body
 
         const newBooking = new Booking({
             formData: formValues,
@@ -236,7 +235,9 @@ const bookEvent = async (req, res) => {
             customerId,
             eventId,
             isAccepted : false,
-            status : "PENDING"
+            status : "PENDING",
+            paidAmount : amount
+            
         })
 
         await newBooking.save()
@@ -286,7 +287,7 @@ const paymentCheckout = async (req, res) => {
 
         const event = await Event.findById(eventId)
         // TODO: change the urls according to manager url when manager sharded
-        let success_url = `http://localhost:3000/payment?eventId=${eventId}&personalValues=${encodeURIComponent(JSON.stringify(personalValues))}&formValues=${encodeURIComponent(JSON.stringify(formValues))}`;
+        let success_url = `http://localhost:3000/payment?eventId=${eventId}&amount=${amt}&personalValues=${encodeURIComponent(JSON.stringify(personalValues))}&formValues=${encodeURIComponent(JSON.stringify(formValues))}`;
         let cancel_url = `http://localhost:3000/events/book/${eventId}`
         const lineItems = [{
             price_data: {
