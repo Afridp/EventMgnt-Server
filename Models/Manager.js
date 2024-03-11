@@ -2,8 +2,8 @@ const mongoose = require('mongoose')
 
 const managerSchema = new mongoose.Schema({
     uuid: {
-        type: String, 
-        unique: true 
+        type: String,
+        unique: true
     },
     companyEmail: {
         type: String
@@ -11,8 +11,8 @@ const managerSchema = new mongoose.Schema({
     username: {
         type: String
     },
-    companyName : {
-        type : String
+    companyName: {
+        type: String
     },
     companyMobile: {
         type: Number
@@ -22,11 +22,11 @@ const managerSchema = new mongoose.Schema({
     },
     isEmailVerified: {
         type: Boolean,
-        default : false
+        default: false
     },
-    isBlocked : {
-        type : Boolean,
-        default : false
+    isBlocked: {
+        type: Boolean,
+        default: false
     },
     // hostedEvents: [
     //     {
@@ -34,23 +34,32 @@ const managerSchema = new mongoose.Schema({
     //         ref: "Event"
     //     }
     // ],
-    subscribed : {
-        type : Boolean,
-        default : false
+    subscribed: {
+        type: Boolean,
+        default: false
     },
-    subscriptionPlan : {
-        type : String
+    subscriptionPlan: {
+        type: String
     },
-    subscriptionStart : {
-        type : Date
+    subscriptionStart: {
+        type: Date
     },
-    subscriptionEnd : {
-        type : Date
+    subscriptionEnd: {
+        type: Date
     },
-    isTrailed : {
-        type : Boolean,
-        default : false
+    isTrailed: {
+        type: Boolean,
+        default: false
     },
+    customize: {
+        logo: String,
+        homePageImage: String,
+        themeColor: String,
+        heading: String,
+        paragraph: String,
+        aboutUs: String
+    },
+
     bookings: [
         {
             type: mongoose.Schema.Types.ObjectId,

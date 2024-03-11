@@ -293,7 +293,7 @@ const listingAndUnlist = async (req, res) => {
 const fetchAllBooking = async (req, res) => {
     try {
 
-        const bookings = await Booking.find({isAccepted: true}).populate("eventId")
+        const bookings = await Booking.find({ isAccepted: true }).populate("eventId")
 
         res.status(200).json({ bookings })
 
@@ -610,9 +610,68 @@ const approveEvent = async (req, res) => {
     }
 }
 
+const fileUploads = async (req, res) => {
+    try {
+        const { logoBlob, homePageImageBlob, managerId } = req.body
+      
+        const logo = await cloudinary.uploader.upload(logoBlob, {
+            public_id: `managerCustomers/logos/${managerId}`,
+            // uload_preset: 'mi_default',
+            // check what is upload preset is
+        })
+        
+        const homePageImage = await cloudinary.uploader.upload(homePageImageBlob, {
+            public_id: `managerCustomers/homePageImages/${managerId}`,
+            // uload_preset: 'mi_default',
+            // check what is upload preset is
+        })
 
+        const manager = await Manager.findById(managerId)
+        manager.customize.logo = logo.secure_url
+        manager.customize.homePageImage = homePageImage.secure_url
 
+        const updated = await manager.save()
 
+        res.status(200).json({ message: "Files uploaded succes" })
+    } catch (error) {
+        console.log(error,"[roble")
+        res.status(500).json({ message: "Internal Server Error" })
+    }
+}
+
+const customizedAppearance = async (req, res) => {
+    try {
+        const { themeColor, managerId } = req.body
+
+        const manager = await Manager.findById(managerId)
+
+        manager.customize.themeColor = themeColor
+
+        const updated = await manager.save()
+        res.status(200).json({ message: "Color Changed Success" })
+
+    } catch (error) {
+        console.log(error.message);
+        res.status(500).json({ message: "Internal Server Error" })
+    }
+}
+
+const customizedContents = async (req,res) =>{
+    try {
+        const { heading, paragraph, aboutUs, managerId } = req.body
+        const manager  = await Manager.findById(managerId)
+        
+        manager.customize.heading = heading
+        manager.customize.paragraph = paragraph
+        manager.customize.aboutUs = aboutUs
+
+        const saved = await manager.save()
+        res.status(200).json({ message : "Content Changed Successfully"})
+    } catch (error) { 
+        console.log(error.message);
+        res.status(500).json({ message: "Internal Server Error" })
+    }
+}
 
 
 module.exports = {
@@ -636,5 +695,8 @@ module.exports = {
     submitFormOfEvent,
     getFormOfEvent,
     getEmployees,
-    approveEvent
+    approveEvent,
+    fileUploads,
+    customizedAppearance,
+    customizedContents
 }
