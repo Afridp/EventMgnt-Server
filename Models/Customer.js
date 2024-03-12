@@ -1,32 +1,39 @@
 const mongoose = require('mongoose')
 
 const customerSchema = new mongoose.Schema({
-    userName : {
+    userName: {
         type: String
     },
-    email : {
-        type : String
+    email: {
+        type: String
     },
-    mobile : { 
-        type : Number
+    mobile: {
+        type: Number
     },
-    password : { 
-        type : String
+    password: {
+        type: String
     },
-    isEmailVerified : {
-        type : Boolean
+    isEmailVerified: {
+        type: Boolean
     },
-    profilePic : {
-        type : String
+    profilePic: {
+        type: String
     },
-    bookings : [
+    wallet : {
+        type : mongoose.Schema.Types.ObjectId,
+        ref : 'Wallet'
+    },
+    bookings: [
         {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'clientEvent' 
+            ref: 'clientEvent'
         }
     ]
-    
-    ,
-},{timestamps : true})
 
-module.exports = mongoose.model('Customer',customerSchema)
+    ,
+}, { timestamps: true })
+
+module.exports = mongoose.model('Customer', customerSchema)
+
+
+

@@ -9,6 +9,8 @@ const Booking = require("../Models/Booking");
 const cloudinary = require('../Utils/cloudinary')
 const Form = require('../Models/Form')
 const { default: Stripe } = require('stripe')
+const FormSubmissions = require('../Models/FormSubmissions')
+const Wallet = require('../Models/Wallet')
 
 
 
@@ -194,34 +196,21 @@ const getEventFormField = async (req, res) => {
     }
 }
 
-// const {
-//     startDate,
-//     endDate,
-//     guestRequirement,
-//     cateringNeeds,
-//     eventName,
-//     eventCategory,
-//     venueName,
-//     venueType,
-//     noofGuests,
-//     numberOfServices,
-//     foodPreference,
-//     cuisines,
-//     desiredEntertainment,
-//     entertainer,
-//     eventTheme,
-//     otherTheme,
-//     themeImage,
-//     audioVisual,
-//     techSupport,
-//     additionalRequirement,
-//     name,
-//     email,
-//     phoneNumber,
-//     alternativePhoneNumber,
-//     location,
-// } = req.body;
-// console.log(req);
+const submitEvent = async (req, res) => {
+    try {
+        const { customerId } = req.params;
+        const { eventId } = req.query
+        const { formValues, personalValues, amount } = req.body
+        // TODO: to do when only getting managerid from frontend usr side 
+        const newSubmission = new FormSubmissions({
+            managerId
+        })
+    } catch (error) {
+
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+}
 
 const bookEvent = async (req, res) => {
     try {
@@ -234,10 +223,10 @@ const bookEvent = async (req, res) => {
             personalData: personalValues,
             customerId,
             eventId,
-            isAccepted : false,
-            status : "PENDING",
-            paidAmount : amount
-            
+            isAccepted: false,
+            status: "PENDING",
+            paidAmount: amount
+
         })
 
         await newBooking.save()
@@ -316,34 +305,7 @@ const paymentCheckout = async (req, res) => {
     }
 }
 
-// const newEvent = new Booking({
-//     customerId,
-//     startDate,
-//     endDate,
-//     guestRequirement,
-//     cateringNeeds,
-//     eventName,
-//     eventCategory,
-//     venueName,
-//     venueType,
-//     venueLocation: location,
-//     audioVisual,
-//     noofGuests,
-//     numberOfServices,
-//     foodPreference,
-//     cuisines,
-//     desiredEntertainment,
-//     entertainer,
-//     eventTheme,
-//     otherTheme,
-//     themeImage: image,
-//     techSupport,
-//     additionalRequirement,
-//     name,
-//     email,
-//     phoneNumber,
-//     alternativePhoneNumber,
-// });
+
 const getBookings = async (req, res) => {
     try {
         const { customerId } = req.params
@@ -366,7 +328,7 @@ const getBookings = async (req, res) => {
                     .sort({ startDate: -1 })
             }
         } else {
-            bookings = await Booking.find(query, { status: 1  }).populate('eventId')
+            bookings = await Booking.find(query, { status: 1 }).populate('eventId')
         }
         if (bookings.length) {
 
@@ -398,7 +360,7 @@ const getSeeMoreEventData = async (req, res) => {
 
 const editBooked = async (req, res) => {
     try {
-    
+
         const {
             guestRequirement,
             cateringNeeds,
@@ -539,10 +501,10 @@ const changePassword = async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body
         const { customerId } = req.query
-        console.log(customerId);
+
 
         const customer = await Customer.findById(customerId)
-        console.log(customer);
+
         const isPasswordMatched = await bcrypt.compare(currentPassword, customer.password)
 
         if (isPasswordMatched) {
@@ -564,6 +526,65 @@ const changePassword = async (req, res) => {
     }
 }
 
+const topupWallet = async (req, res) => {
+    try {
+        const stripeInstance = Stripe(process.env.STRIPE_SECRET_KEY)
+        const { amount, customerId } = req.body
+        let success_url = `http://localhost:3000/wallet/${amount}/${customerId}/${"success"}`;
+        let cancel_url = `http://localhost:3000/wallet`
+        const lineItems = [{
+            price_data: {
+                currency: "inr",
+                product_data: {
+                    name: "TopUp Wallet",
+
+                },
+                unit_amount: amount * 100
+            },
+            quantity: 1
+        }]
+
+        const session = await stripeInstance.checkout.sessions.create({
+            payment_method_types: ["card"],
+            line_items: lineItems,
+            mode: "payment",
+            success_url: success_url,
+            cancel_url: cancel_url
+        })
+
+        res.status(200).json({ sessionId: session.id })
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "internal server Error" })
+    }
+}
+
+const getWallet = async (req, res) => {
+    try {
+        const { customerId } = req.query
+        const wallet = await Wallet.find({ customerId: customerId })
+
+        if (wallet) {
+            console.log(wallet.balance);
+            res.status(200).json({ balance: wallet.balance, transactions: wallet.transactions })
+        } else {
+            const newWallet = new Wallet({
+                customerId: customerId,
+                wallet: {
+                    balance: 0
+                }
+            })
+
+            await newWallet.save()
+            res.status(200)
+        }
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "internal server Error" })
+    }
+}
+
 module.exports = {
     customerSignin,
     customerSignup,
@@ -580,5 +601,8 @@ module.exports = {
     updateProfile,
     changePassword,
     getEventFormField,
-    paymentCheckout
+    paymentCheckout,
+    submitEvent,
+    topupWallet,
+    getWallet
 }
