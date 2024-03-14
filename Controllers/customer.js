@@ -124,6 +124,12 @@ const customerSignup = async (req, res) => {
 
             const savedCustomer = newCustomer.save()
 
+            const newWallet = new Wallet({
+                customerId: customerId,
+                balance: 0
+            })
+            await newWallet.save()
+
             const otpId = await sendToMail((await savedCustomer).userName, (await savedCustomer).email, (await savedCustomer)._id)
 
             res.status(200).json({ customerId: (await savedCustomer)._id, otpId, message: `otp has been sent to ${email}` })
@@ -201,7 +207,7 @@ const submitEvent = async (req, res) => {
     try {
         const { customerId } = req.params;
         const { eventId } = req.query
-        const { formValues, personalValues, amount } = req.body
+        const { formValues, personalValues, amount, walletMode } = req.body
         // TODO: to do when only getting managerid from frontend usr side 
         const newSubmission = new FormSubmissions({
             customerId,
@@ -211,8 +217,21 @@ const submitEvent = async (req, res) => {
             paidAmount: amount,
             status: "pending"
         })
-
         await newSubmission.save()
+        if (walletMode) {
+            console.log(walletMode);
+            const wallet = await Wallet.findOneAndUpdate({ customerId: customerId }, {
+                $inc: { balance: -amount },
+                $push: {
+                    transactions: {
+                        amount: amount,
+                        transactionId: await generateTransactionId(),
+                        transactionType: "Debit"
+                    }
+                }
+            })
+
+        }
         res.status(200).json({ message: "Event Booked Successfully" })
     } catch (error) {
 
@@ -239,6 +258,8 @@ const bookEvent = async (req, res) => {
         })
 
         await newBooking.save()
+
+
         // let transformedSchema = {}
 
         // formData.forEach(field => {
@@ -270,6 +291,8 @@ const bookEvent = async (req, res) => {
 
 
         // const savedEvent = await newEvent.save();
+
+
 
         res.status(201).json({ message: "Event created successfully" });
     } catch (error) {
@@ -447,23 +470,23 @@ const cancelBooked = async (req, res) => {
     try {
         const { eventId } = req.params;
 
-  
+
         const bookingEvent = await Booking.findById(eventId)
         const formSubmissionEvent = await FormSubmissions.findById(eventId)
 
-        
+
         const eventToDelete = bookingEvent ? bookingEvent : formSubmissionEvent;
-       
-       
+
+
         if (!eventToDelete) {
             return res.status(404).json({ message: "Event not found" });
         }
 
-       
+
         if (eventToDelete.paidAmount) {
-        
-            const wallet = await Wallet.findOneAndUpdate({customerId : eventToDelete.customerId},{
-                $inc : { balance: eventToDelete.paidAmount},
+
+            const wallet = await Wallet.findOneAndUpdate({ customerId: eventToDelete.customerId }, {
+                $inc: { balance: eventToDelete.paidAmount },
                 $push: {
                     transactions: {
                         amount: eventToDelete.paidAmount,
@@ -472,13 +495,13 @@ const cancelBooked = async (req, res) => {
                     }
                 }
             })
-            
+
         }
 
         // Delete the event
         await eventToDelete.deleteOne();
 
-        res.status(200).json({ message: "Event canceled successfully", canceledEventId : eventId });
+        res.status(200).json({ message: "Event canceled successfully", canceledEventId: eventId });
     } catch (error) {
         console.log(error);
         res.status(500).json({ message: "Internal server Error" });
@@ -595,16 +618,9 @@ const getWallet = async (req, res) => {
     try {
         const { customerId } = req.query
         const wallet = await Wallet.findOne({ customerId: customerId })
-        if (wallet) {
-            res.status(200).json({ balance: wallet.balance, transactions: wallet.transactions })
-        } else {
-            const newWallet = new Wallet({
-                customerId: customerId,
-                balance: 0
-            })
-            await newWallet.save()
-            res.status(200)
-        }
+
+        res.status(200).json({ balance: wallet.balance, transactions: wallet.transactions })
+
     } catch (error) {
         console.log(error);
         res.status(500).json({ message: "internal server Error" })
