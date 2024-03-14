@@ -12,7 +12,8 @@ const { otpSendToMail, sendCredentialsToEmployee } = require('../Utils/mailSende
 const cloudinary = require('../Utils/cloudinary');
 const Employee = require('../Models/Employee');
 const Form = require('../Models/Form');
-const { default: Stripe } = require('stripe')
+const { default: Stripe } = require('stripe');
+const FormSubmissions = require('../Models/FormSubmissions');
 
 
 
@@ -293,8 +294,8 @@ const listingAndUnlist = async (req, res) => {
 const fetchAllBooking = async (req, res) => {
     try {
 
-        const bookings = await Booking.find({ isAccepted: true }).populate("eventId")
-
+        const bookings = await Booking.find().populate("eventId")
+     
         res.status(200).json({ bookings })
 
     } catch (error) {
@@ -303,11 +304,11 @@ const fetchAllBooking = async (req, res) => {
     }
 }
 
-const getNewBookings = async (req, res) => {
+const getNewSubmissions = async (req, res) => {
     try {
-        const newBookings = await Booking.find({ isAccepted: false }).populate("eventId")
-        if (newBookings) {
-            res.status(200).json({ newBookings })
+        const newSubmissions = await FormSubmissions.find().populate("eventId")
+        if (newSubmissions) {
+            res.status(200).json({ newSubmissions })
         }
     } catch (error) {
         console.error(error.message);
@@ -592,18 +593,25 @@ const getEmployees = async (req, res) => {
 
 const approveEvent = async (req, res) => {
     try {
-        const { eventId } = req.body
-        console.log(eventId);
-        const updated = await Booking.findByIdAndUpdate(eventId, {
-            $set: {
-                isAccepted: true,
-                status: "APPROVED"
-            }
-        })
-        if (updated) {
+        const { submissionId } = req.body
 
-            res.status(200).json({ updatedEvent: updated._id, message: "Approved" })
-        }
+        const submission = await FormSubmissions.findById(submissionId)
+
+        const newBooking = new Booking({
+            customerId: submission.customerId,
+            eventId: submission.eventId,
+            // TODO: need to add manager id also
+            formData: submission.formData,
+            personalData : submission.personalData,
+            paidAmount: submission.amountPaid
+        })
+
+        await newBooking.save()
+
+        await FormSubmissions.findByIdAndDelete(submissionId)
+
+        res.status(200).json({ updatedEvent: submissionId, message: "Approved" })
+
     } catch (error) {
         console.log(error.message);
         res.status(500).json({ message: "Internal Server Error" })
@@ -613,13 +621,13 @@ const approveEvent = async (req, res) => {
 const fileUploads = async (req, res) => {
     try {
         const { logoBlob, homePageImageBlob, managerId } = req.body
-      
+
         const logo = await cloudinary.uploader.upload(logoBlob, {
             public_id: `managerCustomers/logos/${managerId}`,
             // uload_preset: 'mi_default',
             // check what is upload preset is
         })
-        
+
         const homePageImage = await cloudinary.uploader.upload(homePageImageBlob, {
             public_id: `managerCustomers/homePageImages/${managerId}`,
             // uload_preset: 'mi_default',
@@ -634,7 +642,7 @@ const fileUploads = async (req, res) => {
 
         res.status(200).json({ message: "Files uploaded succes" })
     } catch (error) {
-        console.log(error,"[roble")
+        console.log(error, "[roble")
         res.status(500).json({ message: "Internal Server Error" })
     }
 }
@@ -656,18 +664,18 @@ const customizedAppearance = async (req, res) => {
     }
 }
 
-const customizedContents = async (req,res) =>{
+const customizedContents = async (req, res) => {
     try {
         const { heading, paragraph, aboutUs, managerId } = req.body
-        const manager  = await Manager.findById(managerId)
-        
+        const manager = await Manager.findById(managerId)
+
         manager.customize.heading = heading
         manager.customize.paragraph = paragraph
         manager.customize.aboutUs = aboutUs
 
         const saved = await manager.save()
-        res.status(200).json({ message : "Content Changed Successfully"})
-    } catch (error) { 
+        res.status(200).json({ message: "Content Changed Successfully" })
+    } catch (error) {
         console.log(error.message);
         res.status(500).json({ message: "Internal Server Error" })
     }
@@ -690,7 +698,7 @@ module.exports = {
     manageSubscription,
     getAllEmployees,
     blockUnblockEmployee,
-    getNewBookings,
+    getNewSubmissions,
     addEmployee,
     submitFormOfEvent,
     getFormOfEvent,

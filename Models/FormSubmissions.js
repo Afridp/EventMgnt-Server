@@ -9,10 +9,25 @@ const formSubmissionsSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Manager"
     },
-    forData: {
+    customerId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Customer"
+    },
+    formData: {
         type: Object
+    },
+    personalData: {
+        type: Object
+    },
+    status: {
+        type: String
+    },
+    paidAmount: {
+        type: Number
+    },
+    dueDate: {
+        type: Date
     }
-})
+}, { timestamps: true })
 
 module.exports = mongoose.model('FormSubmissions', formSubmissionsSchema);
- 

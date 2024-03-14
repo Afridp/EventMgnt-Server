@@ -19,19 +19,10 @@ const bookingSchema = new mongoose.Schema({
   personalData: {
     type: Object
   },
-  isAccepted: {
-    type: Boolean,
-    default: false
-  },
-  status: {
-    type: String
-  },
   paidAmount: {
     type: Number
   },
-  dueDate : {
-    type : Date
-  }
+  
 },{timestamps : true});
 
 

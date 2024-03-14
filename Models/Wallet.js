@@ -5,29 +5,29 @@ const walletSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Customer'
     },
-    wallet: {
-        balance: {
-            type: Number,
-            default: 0
-        },
-        transactions: [
-            {
-                amount: {
-                    type: Number
-                },
-                transactionId: {
-                    type: String
-                },
-                date: {
-                    type: Date
-                },
-                
-                transactionType: {
-                    type: String
-                }
-            }
-        ]
+    balance: {
+        type: Number,
+        default: 0
     },
+    transactions: [
+        {
+            amount: {
+                type: Number
+            },
+            transactionId: {
+                type: String
+            },
+            date: {
+                type: Date,
+                default : Date.now
+            },
+
+            transactionType: {
+                type: String
+            }
+        }
+    ]
+
 })
 
 module.exports = mongoose.model('Wallet', walletSchema)

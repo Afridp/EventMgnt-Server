@@ -11,6 +11,7 @@ const Form = require('../Models/Form')
 const { default: Stripe } = require('stripe')
 const FormSubmissions = require('../Models/FormSubmissions')
 const Wallet = require('../Models/Wallet')
+const generateTransactionId = require('../Utils/TransactionIdGenerator')
 
 
 
@@ -203,8 +204,16 @@ const submitEvent = async (req, res) => {
         const { formValues, personalValues, amount } = req.body
         // TODO: to do when only getting managerid from frontend usr side 
         const newSubmission = new FormSubmissions({
-            managerId
+            customerId,
+            eventId,
+            formData: formValues,
+            personalData: personalValues,
+            paidAmount: amount,
+            status: "pending"
         })
+
+        await newSubmission.save()
+        res.status(200).json({ message: "Event Booked Successfully" })
     } catch (error) {
 
         console.error(error);
@@ -312,26 +321,35 @@ const getBookings = async (req, res) => {
         const { search, sort } = req.query
 
         let query = { customerId: customerId }
-
+        // TODO:need to work on the search
         if (search) {
-            query.eventName = { $regex: new RegExp(search, 'i') };
+            query.amountPaid = search
+            // { $regex: new RegExp(search, 'i') };
         }
 
-        let bookings
+        let bookings = []
 
         if (sort) {
             if (sort === 'dateAscending') {
-                bookings = await Booking.find(query)
-                    .sort({ startDate: 1 })
+                const dateAscendingBookings = await Booking.find(query).sort({ createdAt: 1 }).populate('eventId')
+                const dateAscendingFormsubmission = await FormSubmissions.find(query).sort({ createdAt: 1 }).populate('eventId')
+                bookings = [...dateAscendingFormsubmission, ...dateAscendingBookings]
             } else if (sort === 'dateDescending') {
-                bookings = await Booking.find(query)
-                    .sort({ startDate: -1 })
+                const dateDescendingBookings = await Booking.find(query).sort({ createdAt: -1 }).populate('eventId')
+                const dateDescendingFormsubmission = await FormSubmissions.find(query).sort({ createdAt: -1 }).populate('eventId')
+                bookings = [...dateDescendingFormsubmission, ...dateDescendingBookings]
+            } else if (sort === 'approved') {
+                bookings = await Booking.find(query).populate('eventId')
+            } else if (sort === 'pending') {
+                bookings = await FormSubmissions.find(query).populate('eventId')
             }
         } else {
-            bookings = await Booking.find(query, { status: 1 }).populate('eventId')
+            const formSubmissions = await FormSubmissions.find(query).populate('eventId');
+            const bookingsFromBookingCollection = await Booking.find(query).populate('eventId');
+
+            bookings = [...formSubmissions, ...bookingsFromBookingCollection];
         }
         if (bookings.length) {
-
             res.status(200).json({ bookings })
         } else {
             res.status(204).json({ message: "no data" })
@@ -425,34 +443,48 @@ const editBooked = async (req, res) => {
     }
 }
 
-const deleteBooked = async (req, res) => {
+const cancelBooked = async (req, res) => {
     try {
-        const { eventId } = req.params
-        const event = await Booking.findById(eventId)
-        const eventStartDate = new Date(event.startDate);
+        const { eventId } = req.params;
 
-        const today = new Date();
-        const tenDaysAgo = new Date(today);
-        tenDaysAgo.setDate(today.getDate() - 10);
+  
+        const bookingEvent = await Booking.findById(eventId)
+        const formSubmissionEvent = await FormSubmissions.findById(eventId)
 
-
-
-        // if (eventStartDate > tenDaysAgo) {
-
-        const deleted = await Booking.findByIdAndDelete({ _id: eventId })
-        if (!deleted) {
-            return res.status(404).json({ message: "Booking not found" });
+        
+        const eventToDelete = bookingEvent ? bookingEvent : formSubmissionEvent;
+       
+       
+        if (!eventToDelete) {
+            return res.status(404).json({ message: "Event not found" });
         }
-        res.status(200).json({ message: "Deleted Successfully" });
-        // }else{
-        //     res.status(409).json({message : "You can't cancel the event 10 days before of the event,Please contact customer care for cancallation procedure"})
-        // }
 
+       
+        if (eventToDelete.paidAmount) {
+        
+            const wallet = await Wallet.findOneAndUpdate({customerId : eventToDelete.customerId},{
+                $inc : { balance: eventToDelete.paidAmount},
+                $push: {
+                    transactions: {
+                        amount: eventToDelete.paidAmount,
+                        transactionId: await generateTransactionId(),
+                        transactionType: "Credit"
+                    }
+                }
+            })
+            
+        }
+
+        // Delete the event
+        await eventToDelete.deleteOne();
+
+        res.status(200).json({ message: "Event canceled successfully", canceledEventId : eventId });
     } catch (error) {
         console.log(error);
-        res.status(500).json({ message: "internal server Error" })
+        res.status(500).json({ message: "Internal server Error" });
     }
-}
+};
+
 
 const updateProfilePic = async (req, res) => {
     try {
@@ -562,26 +594,50 @@ const topupWallet = async (req, res) => {
 const getWallet = async (req, res) => {
     try {
         const { customerId } = req.query
-        const wallet = await Wallet.find({ customerId: customerId })
-
+        const wallet = await Wallet.findOne({ customerId: customerId })
         if (wallet) {
-            console.log(wallet.balance);
             res.status(200).json({ balance: wallet.balance, transactions: wallet.transactions })
         } else {
             const newWallet = new Wallet({
                 customerId: customerId,
-                wallet: {
-                    balance: 0
-                }
+                balance: 0
             })
-
             await newWallet.save()
             res.status(200)
         }
-
     } catch (error) {
         console.log(error);
         res.status(500).json({ message: "internal server Error" })
+    }
+}
+
+const addBalance = async (req, res) => {
+    try {
+        const { amt, customerId } = req.body;
+        const transactionId = await generateTransactionId(); // Corrected variable name
+        const wallet = await Wallet.findOneAndUpdate(
+            { customerId: customerId },
+            {
+                $inc: { balance: amt },
+                $push: {
+                    transactions: {
+                        amount: amt,
+                        transactionId: transactionId, // Corrected variable name
+                        transactionType: "Credit"
+                    }
+                }
+            },
+            { new: true }
+        );
+
+        if (wallet) {
+            res.status(200).json({ message: "Balance updated successfully" });
+        } else {
+            res.status(404).json({ message: "Wallet not found for the customerId" });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
     }
 }
 
@@ -596,7 +652,7 @@ module.exports = {
     getBookings,
     getSeeMoreEventData,
     editBooked,
-    deleteBooked,
+    cancelBooked,
     updateProfilePic,
     updateProfile,
     changePassword,
@@ -604,5 +660,6 @@ module.exports = {
     paymentCheckout,
     submitEvent,
     topupWallet,
-    getWallet
-}
+    getWallet,
+    addBalance
+}    
