@@ -139,6 +139,7 @@ const getEvents = async (req, res) => {
         const { managerUUID, managerId } = req.query;
         // Find events where the UUID starts with the managerUUID
         const events = await Event.find({ managerId: managerId });
+        console.log("haai");
         res.status(200).json({ event: events });
     } catch (error) {
         console.error(error.message);
@@ -295,7 +296,7 @@ const fetchAllBooking = async (req, res) => {
     try {
 
         const bookings = await Booking.find().populate("eventId")
-     
+
         res.status(200).json({ bookings })
 
     } catch (error) {
@@ -331,49 +332,82 @@ const getEventData = async (req, res) => {
 
 const getTodaysEvents = async (req, res) => {
     try {
-        // const today = new Date()
-        // today.setDate(today.getDate() - 1); 
-        // console.log(today);
         const today = new Date();
         today.setHours(0, 0, 0, 0); // Set hours, minutes, seconds, and milliseconds to zero
 
         const tomorrow = new Date(today);
         tomorrow.setDate(today.getDate() + 1); // Get tomorrow's date
 
-        // Find bookings where startDate falls within today's date
-        const todaysEvents = await Booking.find({
-            startDate: {
-                $gte: today, // Greater than or equal to today (inclusive)
-                $lt: tomorrow // Less than tomorrow (exclusive)
+        // Convert string startDate to Date type using $toDate aggregation operator
+        const todaysEvents = await Booking.aggregate([
+            {
+                $addFields: {
+                    "formattedStartDate": { $toDate: "$formData.Date.startDate" }
+                }
+            },
+            {
+                $match: {
+                    "formattedStartDate": {
+                        $gte: today, // Greater than or equal to today (inclusive)
+                        $lt: tomorrow // Less than tomorrow (exclusive)
+                    }
+                }
+            },
+            {
+                $lookup: {
+                    from: "events", // The collection to join with
+                    localField: "eventId", // The field from the input documents
+                    foreignField: "_id", // The field from the documents of the "from" collection
+                    as: "event" // The alias for the output array
+                }
+            },
+            {
+                $project: {
+                    eventId: 1,
+                    event: { $arrayElemAt: ["$event", 0] }, // Retrieve the first element from the 'event' array
+                    formattedStartDate: 1
+                    // You can include other fields here as needed
+                }
             }
-        });
-
-        // const todaysEvents = await Booking.find({ startDate: { $eq: today } })
-
-        res.status(200).json({ todaysEvents })
-
-
-
+        ]);
+       
+        res.status(200).json({ todaysEvents });
     } catch (error) {
         console.error(error.message);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 }
+
+
 
 const getUpcomingEvents = async (req, res) => {
     try {
         const today = new Date()
-        const upcomingEvents = await Booking.find({
-            startDate: { $gte: today }
-        })
 
-        res.status(200).json({ upcomingEvents })
+        // const upcomingEvents = await Booking.find({
+        //     'formData.Date.startDate': { $gte: today }
+        // });
+
+        const upcomingEvents = await Booking.find().populate('eventId')
+
+        // console.log(upcomingEvents.formData.Date.startDate);
+        let events = []
+        let a = upcomingEvents.map((event, i) => {
+            let date = new Date(event.formData.Date.startDate)
+            if (date > today) {
+                events.push(event)
+            }
+
+        })
+        // console.log(events);
+        
+        res.status(200).json({ upcomingEvents : events })
     } catch (error) {
         console.error(error.message);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 }
-
+           
 const subscriptionCheckout = async (req, res) => {
     try {
         const stripeInstance = Stripe(process.env.STRIPE_SECRET_KEY)
@@ -602,7 +636,7 @@ const approveEvent = async (req, res) => {
             eventId: submission.eventId,
             // TODO: need to add manager id also
             formData: submission.formData,
-            personalData : submission.personalData,
+            personalData: submission.personalData,
             paidAmount: submission.amountPaid
         })
 

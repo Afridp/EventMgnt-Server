@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken')
 const bcrypt = require('bcryptjs')
 const Customer = require('../Models/Customer')
 const hash = require('../Utils/bcryptPassword')
-const sendToMail = require('../Utils/mailSender')
+const { otpSendToMail } = require('../Utils/mailSender')
 const Otp = require('../Models/Otp')
 const Event = require('../Models/Event')
 const Booking = require("../Models/Booking");
@@ -86,7 +86,7 @@ const resendOtp = async (req, res) => {
 
         const data = await Customer.findOne({ _id: customerId })
 
-        const otpId = await sendToMail(data.userName, data.email, data._id)
+        const otpId = await otpSendToMail(data.userName, data.email, data._id)
         if (otpId) {
             res.status(200).json({ message: `New otp sent to ${data.email}` })
         } else {
@@ -123,14 +123,14 @@ const customerSignup = async (req, res) => {
             })
 
             const savedCustomer = newCustomer.save()
-
+            
             const newWallet = new Wallet({
-                customerId: customerId,
+                customerId: (await savedCustomer)._id,
                 balance: 0
             })
             await newWallet.save()
 
-            const otpId = await sendToMail((await savedCustomer).userName, (await savedCustomer).email, (await savedCustomer)._id)
+            const otpId = await otpSendToMail((await savedCustomer).userName, (await savedCustomer).email, (await savedCustomer)._id)
 
             res.status(200).json({ customerId: (await savedCustomer)._id, otpId, message: `otp has been sent to ${email}` })
         }
