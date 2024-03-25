@@ -3,7 +3,7 @@ const managerRoute = express()
 const { managerSignup, managerSignin, otpVerification, resendOtp, addNewEvents, getEvents, editEvent, listingAndUnlist, fetchAllBooking, getEventData, getTodaysEvents, getUpcomingEvents, manageSubscription, isSubscribed, getNewEmployees, approveEmployee, getAllEmployees, blockUnblockEmployee, getNewSubmissions, addEmployee, submitFormOfEvent, getFormOfEvent, getEmployees, approveEvent, customizedAppearance, fileUploads, customizedContents } = require('../Controllers/manager');
 const { managerTokenVerify } = require("../Middileware/mangerAuth");
 
-managerRoute.post('/signup', managerSignup)
+managerRoute.post('/createTanent', managerSignup)
 managerRoute.post('/signin', managerSignin)
 managerRoute.post('/otpVerification', otpVerification)
 managerRoute.post('/resendOtp', resendOtp)

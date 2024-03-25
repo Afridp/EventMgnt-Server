@@ -1,7 +1,7 @@
 const express = require('express')
 const app = express()
 const cors = require('cors')
-const db = require('./Configurations/dbConfig');
+// const connectDB = require('./Configurations/dbConfig');
 const managerRoute = require('./Routes/managerRoutes')
 const customerRoute = require('./Routes/customerRoutes')
 const employeeRoute = require('./Routes/employeeRoutes');
@@ -15,7 +15,7 @@ require('dotenv').config();
 startSubscriptionUpdateJob()
 subscriptionEndRemainderMail()
 
-db.connect()
+// const mongoose = connectDB()
 // connecting database with config 
 
 app.use(express.json({ limit: '10mb' }))
@@ -29,7 +29,7 @@ app.use(cors({
     // allowing the orgins from that can access our backend server,in here only this url can on access this backend,also a security feature to prevent unautorized access
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE']
 }))
-
+      
 
 app.use('/manager', managerRoute)
 

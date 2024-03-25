@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken')
 const Manager = require('../Models/Manager')
 const Otp = require('../Models/Otp')
 const Event = require('../Models/Event')
+const TenantSchema = require('../Models/Tenants')
 const Booking = require('../Models/Booking');
 const Employees = require('../Models/Employee')
 const { generateManagerUUID, generateEventUUID } = require('../Utils/UUID_Generator');
@@ -14,42 +15,66 @@ const Employee = require('../Models/Employee');
 const Form = require('../Models/Form');
 const { default: Stripe } = require('stripe');
 const FormSubmissions = require('../Models/FormSubmissions');
+const connectDB = require('../Configurations/dbConfig');
+const TenantSchemas = new Map([['tenant', TenantSchema]])
 
 
+const switchDB = async (dbName, dbSchema) => {
+    const mongoose = await connectDB()
+    if (mongoose.connection.readyState === 1) {
+        const db = mongoose.connection.useDb(dbName, { useCache: true })
 
+        // Prevent from schema re-registration
+        if (!Object.keys(db.models).length) {
+            dbSchema.forEach((schema, modelName) => {
+                db.model(modelName, schema)
+            })
+        }
+        return db
+    }
+    throw new Error('err')
+}
+
+const getDBModel = async (db, modelName) => {
+    return db.model(modelName)
+  }
 
 
 const managerSignup = async (req, res) => {
     try {
-        const { cemail, username, cmobile, password } = req.body
 
-        const existManager = await Manager.findOne({
-            $or: [
-                { companyMobile: cmobile },
-                { companyEmail: cemail }
-            ]
+        const { signupData, scheme, amount } = req.body
+
+        // console.log(signupdata);
+        // const existManager = await M.findOne({
+        //     $or: [
+        //         { companyMobile: cmobile },
+        //         { companyEmail: cemail }
+        //     ]
+        // })
+
+        // if (existManager) {
+        // res.status(409).json({ message: "You have already registered with us,please login" })
+        // } else {
+        const tenantDB = await switchDB('AppTenants', TenantSchemas)
+        const tenant = await getDBModel(tenantDB, 'tenant')
+        const spassword = await hash.hashPassword(signupData.password)
+        const uuid = await generateManagerUUID();
+        const createdTanent = await tenant.create({
+            uuid: uuid,
+            companyEmail: signupData.cemail,
+            username: signupData.username,
+            companyMobile: signupData.cmobile,
+            password: spassword,
+            isEmailVerified: false
         })
 
-        if (existManager) {
-            res.status(409).json({ message: "You have already registered with us,please login" })
-        } else {
-            const spassword = await hash.hashPassword(password)
-            const uuid = await generateManagerUUID();
-            const newManagr = new Manager({
-                uuid: uuid,
-                companyEmail: cemail,
-                username: username,
-                companyMobile: cmobile,
-                password: spassword,
-                isEmailVerified: false
-            })
+        // const managerData = newManagr.save()
 
-            const managerData = newManagr.save()
+        const otpId = await otpSendToMail((await createdTanent).username, (await createdTanent).companyEmail, (await createdTanent)._id)
 
-            const otpId = await otpSendToMail((await managerData).username, (await managerData).companyEmail, (await managerData)._id)
-
-            res.status(200).json({ managerId: (await managerData)._id, otpId, message: `otp has been sent to ${cemail}` })
-        }
+        res.status(200).json({ managerId: (await createdTanent)._id, otpId, managerUUID: createdTanent.uuid, message: `otp has been sent to ${createdTanent.cemail}` })
+        // }
     } catch (error) {
         console.log(error);
         res.status(500).json({ message: "internal server Error" })
@@ -58,7 +83,8 @@ const managerSignup = async (req, res) => {
 
 const otpVerification = async (req, res) => {
     try {
-        const { enteredOtp, managerId, otpId } = req.body
+        const { enteredOtp, managerId, otpId, amount, scheme } = req.body
+        const stripeInstance = Stripe(process.env.STRIPE_SECRET_KEY)
 
         const isOtp = await Otp.findOne({ _id: otpId })
         const correctOtp = isOtp.otp
@@ -72,15 +98,39 @@ const otpVerification = async (req, res) => {
 
             await Otp.deleteMany({ _id: otpId });
             await Manager.updateOne({ _id: managerId }, { $set: { isEmailVerified: true } });
+            // const event = await Event.findById(eventId)
+            // TODO: change the urls according to manager url when manager sharded
+            let success_url = `http://localhost:3000/manager/signin`;
+            let cancel_url = `http://localhost:3000/dashboard`
+            const lineItems = [{
+                price_data: {
+                    currency: "inr",
+                    product_data: {
+                        name: `Choosed Plan ${scheme}`,
 
-            res.status(200).json({ status: true, message: "Registered succesfully You can login now" })
+                    },
+                    unit_amount: amount * 100
+                },
+                quantity: 1
+            }]
+
+            const session = await stripeInstance.checkout.sessions.create({
+                payment_method_types: ["card"],
+                line_items: lineItems,
+                mode: "payment",
+                success_url: success_url,
+                cancel_url: cancel_url
+            })
+
+            res.status(200).json({ status : true ,sessionId: session.id, message: "Registered succesfully" })
+            
         } else {
-            res.status(401).json({ status: true, message: "Incorrect Otp,try again" })
+            res.status(200).json({ status: false, message: "Incorrect Otp,try again" })
         }
 
-    } catch (err) {
-        console.log(err.message)
-        res.status(500).json({ message: "Internal Server Error" })
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "internal server Error" });
     }
 }
 
@@ -370,7 +420,7 @@ const getTodaysEvents = async (req, res) => {
                 }
             }
         ]);
-       
+
         res.status(200).json({ todaysEvents });
     } catch (error) {
         console.error(error.message);
@@ -400,14 +450,14 @@ const getUpcomingEvents = async (req, res) => {
 
         })
         // console.log(events);
-        
-        res.status(200).json({ upcomingEvents : events })
+
+        res.status(200).json({ upcomingEvents: events })
     } catch (error) {
         console.error(error.message);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 }
-           
+
 const subscriptionCheckout = async (req, res) => {
     try {
         const stripeInstance = Stripe(process.env.STRIPE_SECRET_KEY)
