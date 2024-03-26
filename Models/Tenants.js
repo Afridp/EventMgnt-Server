@@ -1,8 +1,8 @@
-const mongoose = require('mongoose') 
+const mongoose = require('mongoose')
 
 const tenantSchema = mongoose.Schema({
-  uuid:{
-    type : String
+  uuid: {
+    type: String
   },
   username: {
     type: String,
@@ -13,19 +13,39 @@ const tenantSchema = mongoose.Schema({
   password: {
     type: String,
   },
-  companyName: {
-    type: String,
-    unique: true
+  // companyName: {
+  //   type: String,
+  //   unique: true
+  // },
+  companyMobile: {
+    type: Number
   },
-  companyMobile:{
-    type : Number
+  isEmailVerified: {
+    type: Boolean
   },
-  isEmailVerified:{
-    type : Boolean
+  subscribed: {
+    type: Boolean
   },
-  url : {
-    type : String
-  }
+  subscriptionScheme: {
+    type: String
+  },
+  subscriptionStart: {
+    type: Date
+  },
+  subscriptionEnd: {
+    type: Date
+  },
+  url: {
+    type: String
+  },
+  customize: {
+    logo: String,
+    homePageImage: String,
+    themeColor: String,
+    heading: String,
+    paragraph: String,
+    aboutUs: String
+  },
 })
 
-module.exports =  tenantSchema
+module.exports = tenantSchema

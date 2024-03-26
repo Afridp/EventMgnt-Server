@@ -1,63 +1,47 @@
 const jwt = require('jsonwebtoken')
+const bcrypt = require('bcryptjs')
+const cloudinary = require('../Utils/cloudinary');
+const hash = require('../Utils/bcryptPassword')
 
+
+const { default: Stripe } = require('stripe');
+const { generateManagerUUID, generateEventUUID } = require('../Utils/UUID_Generator');
+const { otpSendToMail, sendCredentialsToEmployee } = require('../Utils/mailSender')
+const { switchDB, getDBModel, getDocument } = require('../Utils/dbHelper');
+
+const Customer = require('../Models/Customer')
 const Manager = require('../Models/Manager')
 const Otp = require('../Models/Otp')
 const Event = require('../Models/Event')
 const TenantSchema = require('../Models/Tenants')
 const Booking = require('../Models/Booking');
 const Employees = require('../Models/Employee')
-const { generateManagerUUID, generateEventUUID } = require('../Utils/UUID_Generator');
-const bcrypt = require('bcryptjs')
-const hash = require('../Utils/bcryptPassword')
-const { otpSendToMail, sendCredentialsToEmployee } = require('../Utils/mailSender')
-const cloudinary = require('../Utils/cloudinary');
 const Employee = require('../Models/Employee');
 const Form = require('../Models/Form');
-const { default: Stripe } = require('stripe');
 const FormSubmissions = require('../Models/FormSubmissions');
-const connectDB = require('../Configurations/dbConfig');
+const Wallet = require('../Models/Wallet');
+
+
 const TenantSchemas = new Map([['tenant', TenantSchema]])
-
-
-const switchDB = async (dbName, dbSchema) => {
-    const mongoose = await connectDB()
-    if (mongoose.connection.readyState === 1) {
-        const db = mongoose.connection.useDb(dbName, { useCache: true })
-
-        // Prevent from schema re-registration
-        if (!Object.keys(db.models).length) {
-            dbSchema.forEach((schema, modelName) => {
-                db.model(modelName, schema)
-            })
-        }
-        return db
-    }
-    throw new Error('err')
-}
-
-const getDBModel = async (db, modelName) => {
-    return db.model(modelName)
-  }
+const CompanySchemas = new Map([['customer', Customer], ['booking', Booking], ['event', Event], ['form', Form], ['formSubmissions', FormSubmissions], ['wallet', Wallet]])
 
 
 const managerSignup = async (req, res) => {
     try {
-
         const { signupData, scheme, amount } = req.body
 
-        // console.log(signupdata);
-        // const existManager = await M.findOne({
-        //     $or: [
-        //         { companyMobile: cmobile },
-        //         { companyEmail: cemail }
-        //     ]
-        // })
+     
+        /**
+         * Switches or create the Tenant database and gets the Tenant model.
+         * @returns {Model} The Tenant model for the current tenant.
+         */
+        const tenantDB = await switchDB("AppTenants", TenantSchemas);
+        /**
+         * Gets the Tenant model for the current tenant database.
+         * @returns {Model} The Tenant model for the current tenant.
+         */
+        const tenant = await getDBModel(tenantDB,"tenant");
 
-        // if (existManager) {
-        // res.status(409).json({ message: "You have already registered with us,please login" })
-        // } else {
-        const tenantDB = await switchDB('AppTenants', TenantSchemas)
-        const tenant = await getDBModel(tenantDB, 'tenant')
         const spassword = await hash.hashPassword(signupData.password)
         const uuid = await generateManagerUUID();
         const createdTanent = await tenant.create({
@@ -66,7 +50,8 @@ const managerSignup = async (req, res) => {
             username: signupData.username,
             companyMobile: signupData.cmobile,
             password: spassword,
-            isEmailVerified: false
+            isEmailVerified: false,
+            subscribed: false
         })
 
         // const managerData = newManagr.save()
@@ -87,6 +72,7 @@ const otpVerification = async (req, res) => {
         const stripeInstance = Stripe(process.env.STRIPE_SECRET_KEY)
 
         const isOtp = await Otp.findOne({ _id: otpId })
+        console.log(isOtp);
         const correctOtp = isOtp.otp
 
         const { expiresAt } = isOtp
@@ -100,7 +86,7 @@ const otpVerification = async (req, res) => {
             await Manager.updateOne({ _id: managerId }, { $set: { isEmailVerified: true } });
             // const event = await Event.findById(eventId)
             // TODO: change the urls according to manager url when manager sharded
-            let success_url = `http://localhost:3000/manager/signin`;
+            let success_url = `http://localhost:3000/dashboard?managerId=${managerId}&amount=${amount}&scheme=${scheme}`;
             let cancel_url = `http://localhost:3000/dashboard`
             const lineItems = [{
                 price_data: {
@@ -122,8 +108,8 @@ const otpVerification = async (req, res) => {
                 cancel_url: cancel_url
             })
 
-            res.status(200).json({ status : true ,sessionId: session.id, message: "Registered succesfully" })
-            
+            res.status(200).json({ status: true, sessionId: session.id, message: "Registered succesfully" })
+
         } else {
             res.status(200).json({ status: false, message: "Incorrect Otp,try again" })
         }
@@ -131,6 +117,60 @@ const otpVerification = async (req, res) => {
     } catch (error) {
         console.log(error);
         res.status(500).json({ message: "internal server Error" });
+    }
+}
+
+const completeSubscription = async (req, res) => {
+    try {
+        const { managerId, scheme, amount } = req.body
+        let currentDate = new Date()
+
+        let subscriptionEndDate
+
+        if (scheme === "month") {
+
+            subscriptionEndDate = new Date(currentDate)
+            subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1)
+
+            const tenant = await getDocument(managerId, 'tenant', 'AppTenants')
+            if (tenant) {
+                tenant['subscriptionStart'] = currentDate
+                tenant["subscriptionEnd"] = subscriptionEndDate
+                tenant['subscribed'] = true
+                tenant['subscriptionScheme'] = scheme
+            }
+            const updatedTanent = await tenant.save()
+
+            const createDbForTanent = await switchDB(updatedTanent._id,)
+
+            let endDate = subscriptionEndDate.toLocaleDateString("en-GB")
+
+            res.status(200).json({ message: `Subscription successful. Your subscription ends at ${endDate}` })
+
+        } else if (scheme === "year") {
+
+            subscriptionEndDate = new Date(currentDate)
+            subscriptionEndDate.setFullYear(subscriptionEndDate.getFullYear() + 1)
+
+            const tenant = await getDocument(managerId)
+            if (tenant) {
+                tenant['subscriptionStart'] = currentDate
+                tenant["subscriptionEnd"] = subscriptionEndDate
+                tenant['subscribed'] = true
+                tenant['subscriptionScheme'] = scheme
+            }
+            await tenant.save()
+
+            let endDate = subscriptionEndDate.toLocaleDateString("en-GB")
+
+            res.status(200).json({ message: `Subscription successful. Your subscription ends at ${endDate}` })
+
+        } else {
+            res.status(400).json({ message: "Invalid subscription plan" });
+        }
+    } catch (error) {
+        console.log(error.message)
+        res.status(500).json({ message: "Internal Server Error" })
     }
 }
 
@@ -771,6 +811,7 @@ module.exports = {
     managerSignin,
     otpVerification,
     resendOtp,
+    completeSubscription,
     addNewEvents,
     getEvents,
     editEvent,

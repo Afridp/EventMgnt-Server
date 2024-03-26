@@ -1,12 +1,13 @@
 const express = require('express');
 const managerRoute = express()
-const { managerSignup, managerSignin, otpVerification, resendOtp, addNewEvents, getEvents, editEvent, listingAndUnlist, fetchAllBooking, getEventData, getTodaysEvents, getUpcomingEvents, manageSubscription, isSubscribed, getNewEmployees, approveEmployee, getAllEmployees, blockUnblockEmployee, getNewSubmissions, addEmployee, submitFormOfEvent, getFormOfEvent, getEmployees, approveEvent, customizedAppearance, fileUploads, customizedContents } = require('../Controllers/manager');
+const { managerSignup, managerSignin, otpVerification, resendOtp, addNewEvents, getEvents, editEvent, listingAndUnlist, fetchAllBooking, getEventData, getTodaysEvents, getUpcomingEvents, manageSubscription, isSubscribed, getNewEmployees, approveEmployee, getAllEmployees, blockUnblockEmployee, getNewSubmissions, addEmployee, submitFormOfEvent, getFormOfEvent, getEmployees, approveEvent, customizedAppearance, fileUploads, customizedContents, completeSubscription } = require('../Controllers/manager');
 const { managerTokenVerify } = require("../Middileware/mangerAuth");
 
 managerRoute.post('/createTanent', managerSignup)
 managerRoute.post('/signin', managerSignin)
 managerRoute.post('/otpVerification', otpVerification)
 managerRoute.post('/resendOtp', resendOtp)
+managerRoute.post('/completeSubscription', completeSubscription)
 
 managerRoute.get('/getEvents', getEvents)
 managerRoute.post('/addEvent', addNewEvents)
