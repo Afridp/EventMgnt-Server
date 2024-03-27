@@ -1,6 +1,6 @@
 const mongoose = require('mongoose')
 
-const eventSchema = new mongoose.Schema({
+const eventSchema = mongoose.Schema({
     uuid: {
         type: String, 
         unique: true 
@@ -30,4 +30,4 @@ const eventSchema = new mongoose.Schema({
     }
 })
 
-module.exports = mongoose.model('Event', eventSchema)
+module.exports = eventSchema

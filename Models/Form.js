@@ -1,6 +1,6 @@
 const mongoose = require("mongoose")
 
-const formsSchema = new mongoose.Schema({
+const formsSchema = mongoose.Schema({
     eventId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Event'
@@ -18,4 +18,4 @@ const formsSchema = new mongoose.Schema({
 
 })
 
-module.exports = mongoose.model('Form', formsSchema)
+module.exports = formsSchema

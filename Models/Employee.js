@@ -1,6 +1,6 @@
 const mongoose = require('mongoose')
 
-const employeeSchema = new mongoose.Schema({
+const employeeSchema = mongoose.Schema({
     name : {
         type: String
     },
@@ -68,4 +68,4 @@ const employeeSchema = new mongoose.Schema({
     
 },{timestamps : true})
 
-module.exports = mongoose.model('Employee',employeeSchema)
+module.exports = employeeSchema

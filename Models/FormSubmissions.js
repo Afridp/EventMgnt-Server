@@ -1,6 +1,6 @@
 const mongoose = require('mongoose')
 
-const formSubmissionsSchema = new mongoose.Schema({
+const formSubmissionsSchema = mongoose.Schema({
     eventId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Event"
@@ -30,4 +30,4 @@ const formSubmissionsSchema = new mongoose.Schema({
     }
 }, { timestamps: true })
 
-module.exports = mongoose.model('FormSubmissions', formSubmissionsSchema);
+module.exports = formSubmissionsSchema

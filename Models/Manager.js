@@ -1,6 +1,6 @@
 const mongoose = require('mongoose')
 
-const managerSchema = new mongoose.Schema({
+const managerSchema = mongoose.Schema({
     uuid: {
         type: String,
         unique: true
@@ -68,4 +68,4 @@ const managerSchema = new mongoose.Schema({
     ]
 })
 
-module.exports = mongoose.model('Manager', managerSchema)
+module.exports =  managerSchema
