@@ -35,7 +35,7 @@ const tenantSchema = mongoose.Schema({
   subscriptionEnd: {
     type: Date
   },
-  url: {
+  domain : {
     type: String
   },
   customize: {

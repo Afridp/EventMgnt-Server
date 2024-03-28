@@ -20,6 +20,7 @@ const Employee = require('../Models/Employee');
 const Form = require('../Models/Form');
 const FormSubmissions = require('../Models/FormSubmissions');
 const Wallet = require('../Models/Wallet');
+const tenantSchema = require('../Models/Tenants');
 
 
 const TenantSchemas = new Map([['tenant', TenantSchema]])
@@ -29,36 +30,47 @@ const CompanySchemas = new Map([['customer', Customer], ['booking', Booking], ['
 const managerSignup = async (req, res) => {
     try {
         const { signupData, scheme, amount } = req.body
+        console.log(signupData);
+        const isCompanyExist = await getDocument({
+            $or: [
+                { companyMobile: signupData },
+                { companyEmail: signupData }
+            ]
+        }, 'tenant', 'AppTenants')
+        console.log(isCompanyExist);
+        if (isCompanyExist) {
+            res.status(401).json({ message: "You have already registered with us ,Please Login to continue" })
+        } else {
 
+            /**
+             * Switches or create the Tenant database and gets the Tenant model.
+             * @returns {Model} The Tenant model for the current tenant.
+            */
+            const tenantDB = await switchDB("AppTenants", TenantSchemas);
+            /**
+             * Gets the Tenant model for the current tenant database.
+             * @returns {Model} The Tenant model for the current tenant.
+            */
+            const tenant = await getDBModel(tenantDB, "tenant");
 
-        /**
-         * Switches or create the Tenant database and gets the Tenant model.
-         * @returns {Model} The Tenant model for the current tenant.
-         */
-        const tenantDB = await switchDB("AppTenants", TenantSchemas);
-        /**
-         * Gets the Tenant model for the current tenant database.
-         * @returns {Model} The Tenant model for the current tenant.
-         */
-        const tenant = await getDBModel(tenantDB, "tenant");
+            const spassword = await hash.hashPassword(signupData.password)
+            // const uuid = await generateManagerUUID();
+            const createdTanent = await tenant.create({
+                // uuid: uuid,
+                companyEmail: signupData.cemail,
+                username: signupData.username,
+                companyMobile: signupData.cmobile,
+                password: spassword,
+                isEmailVerified: false,
+                subscribed: false
+            })
 
-        const spassword = await hash.hashPassword(signupData.password)
-        // const uuid = await generateManagerUUID();
-        const createdTanent = await tenant.create({
-            // uuid: uuid,
-            companyEmail: signupData.cemail,
-            username: signupData.username,
-            companyMobile: signupData.cmobile,
-            password: spassword,
-            isEmailVerified: false,
-            subscribed: false
-        })
+            // const managerData = newManagr.save()
 
-        // const managerData = newManagr.save()
+            const otpId = await otpSendToMail((await createdTanent).username, (await createdTanent).companyEmail, (await createdTanent)._id)
 
-        const otpId = await otpSendToMail((await createdTanent).username, (await createdTanent).companyEmail, (await createdTanent)._id)
-
-        res.status(200).json({ managerId: (await createdTanent)._id, otpId, managerUUID: createdTanent.uuid, message: `otp has been sent to ${createdTanent.cemail}` })
+            res.status(200).json({ managerId: (await createdTanent)._id, otpId, managerUUID: createdTanent.uuid, message: `otp has been sent to ${createdTanent.cemail}` })
+        }
         // }
     } catch (error) {
         console.log(error);
@@ -85,7 +97,7 @@ const otpVerification = async (req, res) => {
             await Otp.deleteMany({ _id: otpId });
 
 
-            const manager = await getDocument({_id :managerId}, 'tenant', 'AppTenants')
+            const manager = await getDocument({ _id: managerId }, 'tenant', 'AppTenants')
             if (manager) {
                 manager['isEmailVerified'] = true
             }
@@ -138,7 +150,7 @@ const completeSubscription = async (req, res) => {
             subscriptionEndDate = new Date(currentDate)
             subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1)
 
-            const tenant = await getDocument({_id : managerId}, 'tenant', 'AppTenants')
+            const tenant = await getDocument({ _id: managerId }, 'tenant', 'AppTenants')
             if (tenant) {
                 tenant['subscriptionStart'] = currentDate
                 tenant["subscriptionEnd"] = subscriptionEndDate
@@ -146,7 +158,8 @@ const completeSubscription = async (req, res) => {
                 tenant['subscriptionScheme'] = scheme
             }
             const updatedTanent = await tenant.save()
-            const createDbForTanent = await switchDB(updatedTanent._id, CompanySchemas)
+            console.log(updatedTanent);
+            await switchDB((await updatedTanent).username, CompanySchemas)
 
 
 
@@ -158,7 +171,7 @@ const completeSubscription = async (req, res) => {
 
             subscriptionEndDate = new Date(currentDate)
             subscriptionEndDate.setFullYear(subscriptionEndDate.getFullYear() + 1)
-    
+
             const tenant = await getDocument({ _id: managerId }, "tenant", 'AppTenants')
             if (tenant) {
                 tenant['subscriptionStart'] = currentDate
@@ -167,7 +180,8 @@ const completeSubscription = async (req, res) => {
                 tenant['subscriptionScheme'] = scheme
             }
             const updatedTanent = await tenant.save()
-            const createDbForTanent = await switchDB(updatedTanent._id, CompanySchemas)
+
+            await switchDB((await updatedTanent).username, CompanySchemas)
 
             let endDate = subscriptionEndDate.toLocaleDateString("en-GB")
 
@@ -209,9 +223,9 @@ const managerSignin = async (req, res) => {
                 { companyEmail: signinDetails }
             ]
         }, "tenant", "AppTenants")
-        
+
         if (istenantExist) {
-            if(istenantExist.subscribed){
+            if (istenantExist.subscribed) {
                 if (istenantExist.isEmailVerified) {
                     const isPassword = await bcrypt.compare(password, istenantExist.password)
                     if (isPassword) {
@@ -223,8 +237,8 @@ const managerSignin = async (req, res) => {
                 } else {
                     res.status(403).json({ message: 'Sorry You cannot access until you verify account' })
                 }
-            }else{
-                res.status(401).json({ message : "Sorry You haven't subscribed yet,Please Subscribe to our any plan"})
+            } else {
+                res.status(401).json({ message: "Sorry You haven't subscribed yet,Please Subscribe to our any plan" })
             }
         } else {
             res.status(401).json({ message: "You are not registered with us please register to login" })
@@ -232,6 +246,22 @@ const managerSignin = async (req, res) => {
     } catch (error) {
         console.log(error.message);
         res.status(500).json({ message: "Internal Server Error" })
+    }
+}
+
+const createSubdomain = async (req, res) => {
+    try {
+        const { domain, managerId } = req.body
+        const managerToUpdate = await getDocument({ _id: managerId }, "tenant", "AppTenants")
+        if (managerToUpdate) {
+            managerToUpdate['domain'] = domain
+            const saved = await managerToUpdate.save()
+            res.status(200).json({ message: "Subdomain Changed Successfully", domain: saved.domain })
+        }
+
+    } catch (error) {
+        console.error(error.message);
+        res.status(500).json({ message: "Internal Server Error" });
     }
 }
 
@@ -488,7 +518,7 @@ const getUpcomingEvents = async (req, res) => {
         // const upcomingEvents = await Booking.find({
         //     'formData.Date.startDate': { $gte: today }
         // });
-        await getDocument({},"")
+        await getDocument({}, "")
         const upcomingEvents = await Booking.find().populate('eventId')
 
         // console.log(upcomingEvents.formData.Date.startDate);
@@ -823,6 +853,7 @@ module.exports = {
     otpVerification,
     resendOtp,
     completeSubscription,
+    createSubdomain,
     addNewEvents,
     getEvents,
     editEvent,
