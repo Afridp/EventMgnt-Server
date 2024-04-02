@@ -23,18 +23,59 @@ app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '5mb' }))
 // middleware for parsing the URL encoded data,(html forms datas)
 
-// middleware for setting or configuring the cors and making the connection good
-app.use(cors({
-    origin: 'http://localhost:3000',
-    // allowing the orgins from that can access our backend server,in here only this url can on access this backend,also a security feature to prevent unautorized access
-    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE']
-}))
-      
+// Custom CORS middleware to dynamically set the origin based on the request
+const customCorsMiddleware = (req, res, next) => {
+    // Extract the subdomain from the request hostname
+    const subdomain = req.hostname.split('.')[0];
 
-app.use('/manager', managerRoute)
+    // Check if the subdomain is 'manager', 'customer', or 'employee'
+    // Set the appropriate origin based on the subdomain
+    let origin;
+    if (subdomain === 'manager' || subdomain === 'customer' || subdomain === 'employee') {
+        origin = `http://${subdomain}.localhost:3000`;
+    } else {
+        console.log("haaai");
+        // Default origin if subdomain is not recognized
+        origin = 'http://localhost:3000';
+    }
 
-app.use('/', customerRoute)
+    // Allow other CORS headers
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-app.use('/employee', employeeRoute)
+    // Continue to the next middleware
+    next();
+};
 
-app.listen(5000, () => console.log('server connected'))
+// Apply the custom CORS middleware to all routes
+app.use(customCorsMiddleware);
+
+// Define middleware to handle dynamic route redirection based on subdomain
+const dynamicRouteHandler = (req, res, next) => {
+    const subdomain = req.hostname.split('.')[0];
+    console.log(subdomain,"hafdghsfgsdfgaai");
+    // Dynamically redirect requests based on the subdomain
+    switch (subdomain) {
+        case 'manager':
+          
+           return managerRoute(req, res, next);
+           
+        case 'customer':
+            console.log("hello");
+           return customerRoute(req, res, next);
+            
+        case 'employee':
+           return employeeRoute(req, res, next);
+            
+        default:
+            // Handle default case if subdomain is not recognized
+            res.status(404).send('Not Found');
+    }
+};
+            
+// Apply the dynamic route handler middleware to all routes
+app.use(dynamicRouteHandler);
+
+// Start the server
+app.listen(5000, () => console.log('Server connected'));

@@ -214,7 +214,7 @@ const resendOtp = async (req, res) => {
 
 const managerSignin = async (req, res) => {
     try {
-
+       
         const { signinDetails, password } = req.body
 
         const istenantExist = await getDocument({
