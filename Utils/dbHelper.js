@@ -23,7 +23,7 @@ const TenantSchemas = new Map([['tenant', tenantSchema]])
 const switchDB = async (dbName, dbSchema) => {
 
     const mongoose = await connectDB()
-
+    console.log(dbName);
     if (mongoose.connection.readyState === 1) {
         const db = mongoose.connection.useDb(dbName, { useCache: true })
         // Prevent from schema re-registration
@@ -45,7 +45,7 @@ const getDBModel = async (db, modelName) => {
 
 const getDocument = async (query, collectionName, dbname) => {
     try {
-        console.log(query);
+        
         const tenantDB = await switchDB(dbname, TenantSchemas);
         const tenantModel = await getDBModel(tenantDB, collectionName);
         const tenant = await tenantModel.findOne(query); // Using findOne to get a single document

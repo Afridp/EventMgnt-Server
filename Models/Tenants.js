@@ -18,7 +18,7 @@ const tenantSchema = mongoose.Schema({
   //   unique: true
   // },
   companyMobile: {
-    type: Number
+    type: String
   },
   isEmailVerified: {
     type: Boolean

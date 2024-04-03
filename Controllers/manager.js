@@ -29,15 +29,15 @@ const CompanySchemas = new Map([['customer', Customer], ['booking', Booking], ['
 
 const managerSignup = async (req, res) => {
     try {
-        const { signupData, scheme, amount } = req.body
-        console.log(signupData);
+        const { signupData } = req.body
+
         const isCompanyExist = await getDocument({
             $or: [
                 { companyMobile: signupData },
                 { companyEmail: signupData }
             ]
         }, 'tenant', 'AppTenants')
-        console.log(isCompanyExist);
+
         if (isCompanyExist) {
             res.status(401).json({ message: "You have already registered with us ,Please Login to continue" })
         } else {
@@ -101,10 +101,10 @@ const otpVerification = async (req, res) => {
             if (manager) {
                 manager['isEmailVerified'] = true
             }
-            const updatedTanent = await manager.save()
+             await manager.save()
             // const event = await Event.findById(eventId)
             // TODO: change the urls according to manager url when manager sharded
-            let success_url = `http://localhost:3000/dashboard?managerId=${managerId}&amount=${amount}&scheme=${scheme}`;
+            let success_url = `http://localhost:3000/?managerId=${managerId}&amount=${amount}&scheme=${scheme}`;
             let cancel_url = `http://localhost:3000/dashboard`
             const lineItems = [{
                 price_data: {
@@ -140,7 +140,7 @@ const otpVerification = async (req, res) => {
 
 const completeSubscription = async (req, res) => {
     try {
-        const { managerId, scheme, amount } = req.body
+        const { managerId, scheme} = req.body
         let currentDate = new Date()
 
         let subscriptionEndDate
@@ -156,10 +156,11 @@ const completeSubscription = async (req, res) => {
                 tenant["subscriptionEnd"] = subscriptionEndDate
                 tenant['subscribed'] = true
                 tenant['subscriptionScheme'] = scheme
-            }
+            }   
             const updatedTanent = await tenant.save()
-            console.log(updatedTanent);
-            await switchDB((await updatedTanent).username, CompanySchemas)
+            const tenantId = await updatedTanent._id.toString()
+           
+            await switchDB(tenantId, CompanySchemas)
 
 
 
@@ -180,8 +181,8 @@ const completeSubscription = async (req, res) => {
                 tenant['subscriptionScheme'] = scheme
             }
             const updatedTanent = await tenant.save()
-
-            await switchDB((await updatedTanent).username, CompanySchemas)
+            const tenantId = await updatedTanent._id.toString()
+            await switchDB(tenantId, CompanySchemas)
 
             let endDate = subscriptionEndDate.toLocaleDateString("en-GB")
 
@@ -214,7 +215,7 @@ const resendOtp = async (req, res) => {
 
 const managerSignin = async (req, res) => {
     try {
-       
+
         const { signinDetails, password } = req.body
 
         const istenantExist = await getDocument({

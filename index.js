@@ -34,7 +34,6 @@ const customCorsMiddleware = (req, res, next) => {
     if (subdomain === 'manager' || subdomain === 'customer' || subdomain === 'employee') {
         origin = `http://${subdomain}.localhost:3000`;
     } else {
-        console.log("haaai");
         // Default origin if subdomain is not recognized
         origin = 'http://localhost:3000';
     }
@@ -54,26 +53,30 @@ app.use(customCorsMiddleware);
 // Define middleware to handle dynamic route redirection based on subdomain
 const dynamicRouteHandler = (req, res, next) => {
     const subdomain = req.hostname.split('.')[0];
-    console.log(subdomain,"hafdghsfgsdfgaai");
+    console.log(subdomain, "hafdghsfgsdfgaai");
     // Dynamically redirect requests based on the subdomain
     switch (subdomain) {
         case 'manager':
-          
-           return managerRoute(req, res, next);
-           
+
+            return managerRoute(req, res, next);
+
         case 'customer':
-            console.log("hello");
-           return customerRoute(req, res, next);
-            
+
+            return customerRoute(req, res, next);
+
         case 'employee':
-           return employeeRoute(req, res, next);
+
+            return employeeRoute(req, res, next);
             
+        case 'localhost':
+            // TODO: when deploying
+            return managerRoute(req, res, next)
         default:
             // Handle default case if subdomain is not recognized
             res.status(404).send('Not Found');
     }
 };
-            
+
 // Apply the dynamic route handler middleware to all routes
 app.use(dynamicRouteHandler);
 

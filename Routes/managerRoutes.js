@@ -4,9 +4,10 @@ const { managerSignup, managerSignin, otpVerification, resendOtp, addNewEvents, 
 const { managerTokenVerify } = require("../Middileware/mangerAuth");
 
 managerRoute.post('/createTanent', managerSignup)
-managerRoute.post('/signin', managerSignin)
 managerRoute.post('/otpVerification', otpVerification)
 managerRoute.post('/resendOtp', resendOtp)
+
+managerRoute.post('/signin', managerSignin)
 managerRoute.post('/completeSubscription', completeSubscription)
 managerRoute.post('/createSubdomain',createSubdomain)
 
