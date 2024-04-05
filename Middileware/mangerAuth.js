@@ -1,11 +1,10 @@
 const jwt = require('jsonwebtoken');
-const Manager = require('../Models/Manager');
 const { getDocument } = require('../Utils/dbHelper');
 
 const managerTokenVerify = async (req, res, next) => {
   try {
     let token = req.headers.authorization;
-    console.log(req.headers);
+  
     if (!token) {
       return res.status(403).json({ message: 'Access Denied' });
     }

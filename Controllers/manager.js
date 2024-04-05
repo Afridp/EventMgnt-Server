@@ -7,7 +7,7 @@ const hash = require('../Utils/bcryptPassword')
 const { default: Stripe } = require('stripe');
 const { generateManagerUUID, generateEventUUID } = require('../Utils/UUID_Generator');
 const { otpSendToMail, sendCredentialsToEmployee } = require('../Utils/mailSender')
-const { switchDB, getDBModel, getDocument } = require('../Utils/dbHelper');
+const { switchDB, getDBModel, getDocument, getDocuments } = require('../Utils/dbHelper');
 
 const Customer = require('../Models/Customer')
 const Manager = require('../Models/Manager')
@@ -20,8 +20,6 @@ const Employee = require('../Models/Employee');
 const Form = require('../Models/Form');
 const FormSubmissions = require('../Models/FormSubmissions');
 const Wallet = require('../Models/Wallet');
-const tenantSchema = require('../Models/Tenants');
-
 
 const TenantSchemas = new Map([['tenant', TenantSchema]])
 const CompanySchemas = new Map([['customer', Customer], ['booking', Booking], ['event', Event], ['form', Form], ['formSubmissions', FormSubmissions], ['wallet', Wallet], ['employee', Employee]])
@@ -36,12 +34,11 @@ const managerSignup = async (req, res) => {
                 { companyMobile: signupData },
                 { companyEmail: signupData }
             ]
-        }, 'tenant', 'AppTenants')
+        }, 'tenants', 'AppTenants')
 
         if (isCompanyExist) {
             res.status(401).json({ message: "You have already registered with us ,Please Login to continue" })
         } else {
-
             /**
              * Switches or create the Tenant database and gets the Tenant model.
              * @returns {Model} The Tenant model for the current tenant.
@@ -52,19 +49,19 @@ const managerSignup = async (req, res) => {
              * @returns {Model} The Tenant model for the current tenant.
             */
             const tenant = await getDBModel(tenantDB, "tenant");
-
             const spassword = await hash.hashPassword(signupData.password)
-            // const uuid = await generateManagerUUID();
+            const uuid = await generateManagerUUID();
+            const customerLink = `http://customer.localhost:3000/${uuid}`
             const createdTanent = await tenant.create({
-                // uuid: uuid,
+                uuid: uuid,
                 companyEmail: signupData.cemail,
                 username: signupData.username,
                 companyMobile: signupData.cmobile,
                 password: spassword,
                 isEmailVerified: false,
-                subscribed: false
+                subscribed: false,
+                customerLink: customerLink
             })
-
             // const managerData = newManagr.save()
 
             const otpId = await otpSendToMail((await createdTanent).username, (await createdTanent).companyEmail, (await createdTanent)._id)
@@ -98,10 +95,11 @@ const otpVerification = async (req, res) => {
 
 
             const manager = await getDocument({ _id: managerId }, 'tenant', 'AppTenants')
+            console.log(manager);
             if (manager) {
                 manager['isEmailVerified'] = true
             }
-             await manager.save()
+            await manager.save()
             // const event = await Event.findById(eventId)
             // TODO: change the urls according to manager url when manager sharded
             let success_url = `http://localhost:3000/?managerId=${managerId}&amount=${amount}&scheme=${scheme}`;
@@ -140,7 +138,7 @@ const otpVerification = async (req, res) => {
 
 const completeSubscription = async (req, res) => {
     try {
-        const { managerId, scheme} = req.body
+        const { managerId, scheme } = req.body
         let currentDate = new Date()
 
         let subscriptionEndDate
@@ -156,10 +154,10 @@ const completeSubscription = async (req, res) => {
                 tenant["subscriptionEnd"] = subscriptionEndDate
                 tenant['subscribed'] = true
                 tenant['subscriptionScheme'] = scheme
-            }   
+            }
             const updatedTanent = await tenant.save()
             const tenantId = await updatedTanent._id.toString()
-           
+
             await switchDB(tenantId, CompanySchemas)
 
 
@@ -250,28 +248,115 @@ const managerSignin = async (req, res) => {
     }
 }
 
-const createSubdomain = async (req, res) => {
-    try {
-        const { domain, managerId } = req.body
-        const managerToUpdate = await getDocument({ _id: managerId }, "tenant", "AppTenants")
-        if (managerToUpdate) {
-            managerToUpdate['domain'] = domain
-            const saved = await managerToUpdate.save()
-            res.status(200).json({ message: "Subdomain Changed Successfully", domain: saved.domain })
-        }
+// const createSubdomain = async (req, res) => {
+//     try {
+//         const { domain, managerId } = req.body
+//         const managerToUpdate = await getDocument({ _id: managerId }, "tenant", "AppTenants")
+//         if (managerToUpdate) {
+//             managerToUpdate['domain'] = domain
+//             const saved = await managerToUpdate.save()
+//             res.status(200).json({ message: "Subdomain Changed Successfully", domain: saved.domain })
+//         }
 
+//     } catch (error) {
+//         console.error(error.message);
+//         res.status(500).json({ message: "Internal Server Error" });
+//     }
+// }
+
+const getTodaysEvents = async (req, res) => {
+    try {
+        const managerId = req.headers.roleid
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Set hours, minutes, seconds, and milliseconds to zero
+
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1); // Get tomorrow's date
+
+        const tenantDB = await switchDB(managerId, CompanySchemas);
+        const Bookings = await getDBModel(tenantDB, "bookings")
+
+        // Convert string startDate to Date type using $toDate aggregation operator
+        const todaysEvents = await Bookings.aggregate([
+            {
+                $addFields: {
+                    "formattedStartDate": { $toDate: "$formData.Date.startDate" }
+                }
+            },
+            {
+                $match: {
+                    "formattedStartDate": {
+                        $gte: today, // Greater than or equal to today (inclusive)
+                        $lt: tomorrow // Less than tomorrow (exclusive)
+                    }
+                }
+            },
+            {
+                $lookup: {
+                    from: "events", // The collection to join with
+                    localField: "eventId", // The field from the input documents
+                    foreignField: "_id", // The field from the documents of the "from" collection
+                    as: "event" // The alias for the output array
+                }
+            },
+            {
+                $project: {
+                    eventId: 1,
+                    event: { $arrayElemAt: ["$event", 0] }, // Retrieve the first element from the 'event' array
+                    formattedStartDate: 1
+                    // You can include other fields here as needed
+                }
+            }
+        ]);
+
+
+        res.status(200).json({ todaysEvents });
     } catch (error) {
         console.error(error.message);
-        res.status(500).json({ message: "Internal Server Error" });
+        res.status(500).json({ message: 'Internal Server Error' });
     }
 }
 
+const getUpcomingEvents = async (req, res) => {
+    try {
+        const managerId = req.headers.roleid
+        const today = new Date()
+
+        // const upcomingEvents = await Booking.find({
+        //     'formData.Date.startDate': { $gte: today }
+        // });
+        const tenantDB = await switchDB(managerId, CompanySchemas);
+        const Bookings = await getDBModel(tenantDB, "bookings")
+
+        const upcomingEvents = await Bookings.find().populate('eventId')
+
+        // console.log(upcomingEvents.formData.Date.startDate);
+        let events = []
+        let a = upcomingEvents.map((event, i) => {
+            let date = new Date(event.formData.Date.startDate)
+            if (date > today) {
+                events.push(event)
+            }
+
+        })
+        // console.log(events);
+
+        res.status(200).json({ upcomingEvents: events })
+    } catch (error) {
+        console.error(error.message);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+}
+
+
+
 const getEvents = async (req, res) => {
     try {
-        const { managerUUID, managerId } = req.query;
+        const managerId = req.headers.roleid
+
         // Find events where the UUID starts with the managerUUID
-        const events = await Event.find({ managerId: managerId });
-        console.log("haai");
+        const events = await getDocument({ managerId: managerId }, "events", managerId)
+
         res.status(200).json({ event: events });
     } catch (error) {
         console.error(error.message);
@@ -282,21 +367,27 @@ const getEvents = async (req, res) => {
 
 const addNewEvents = async (req, res) => {
     try {
-        const { eventName, eventDescription, image, managerUUID, managerId } = req.body
-        const existEvent = await Event.findOne({ eventName: eventName })
+        const managerId = req.headers.roleid
+        const { eventName, eventDescription, image } = req.body
+
+        const existEvent = await getDocument({ eventName: eventName }, "events", managerId)
         if (!existEvent) {
-            const uuid = await generateEventUUID(managerUUID)
+            // const uuid = await generateEventUUID(managerUUID)
 
             const uploaded = await cloudinary.uploader.upload(image, {
                 public_id: `events/${eventName}`,
                 // uload_preset: 'mi_default',
                 // check what is upload preset is
             })
-            const newEvent = new Event({
+
+            const db = switchDB(managerId, CompanySchemas)
+            const Event = getDBModel(db, "events")
+
+            const newEvent = await Event.create({
                 eventName,
                 eventDescription,
                 eventImage: uploaded.secure_url,
-                uuid: uuid,
+                // uuid: uuid,
                 managerId: managerId,
                 list: false
 
@@ -314,11 +405,14 @@ const addNewEvents = async (req, res) => {
     }
 }
 
+// ////////////////////////////////////////
+
 const getFormOfEvent = async (req, res) => {
     try {
+        const managerId = req.headers.roleid
         const { eventId } = req.query
-
-        const event = await Form.findOne({ eventId: eventId })
+       
+        const event =  await getDocument({ eventId: eventId }, "forms", managerId)
         if (!event?.formFields) {
             return res.status(200).json({ fields: [] })
         }
@@ -462,83 +556,11 @@ const getEventData = async (req, res) => {
     }
 }
 
-const getTodaysEvents = async (req, res) => {
-    try {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0); // Set hours, minutes, seconds, and milliseconds to zero
-
-        const tomorrow = new Date(today);
-        tomorrow.setDate(today.getDate() + 1); // Get tomorrow's date
-
-        // Convert string startDate to Date type using $toDate aggregation operator
-        const todaysEvents = await Booking.aggregate([
-            {
-                $addFields: {
-                    "formattedStartDate": { $toDate: "$formData.Date.startDate" }
-                }
-            },
-            {
-                $match: {
-                    "formattedStartDate": {
-                        $gte: today, // Greater than or equal to today (inclusive)
-                        $lt: tomorrow // Less than tomorrow (exclusive)
-                    }
-                }
-            },
-            {
-                $lookup: {
-                    from: "events", // The collection to join with
-                    localField: "eventId", // The field from the input documents
-                    foreignField: "_id", // The field from the documents of the "from" collection
-                    as: "event" // The alias for the output array
-                }
-            },
-            {
-                $project: {
-                    eventId: 1,
-                    event: { $arrayElemAt: ["$event", 0] }, // Retrieve the first element from the 'event' array
-                    formattedStartDate: 1
-                    // You can include other fields here as needed
-                }
-            }
-        ]);
-
-        res.status(200).json({ todaysEvents });
-    } catch (error) {
-        console.error(error.message);
-        res.status(500).json({ message: 'Internal Server Error' });
-    }
-}
 
 
 
-const getUpcomingEvents = async (req, res) => {
-    try {
-        const today = new Date()
 
-        // const upcomingEvents = await Booking.find({
-        //     'formData.Date.startDate': { $gte: today }
-        // });
-        await getDocument({}, "")
-        const upcomingEvents = await Booking.find().populate('eventId')
 
-        // console.log(upcomingEvents.formData.Date.startDate);
-        let events = []
-        let a = upcomingEvents.map((event, i) => {
-            let date = new Date(event.formData.Date.startDate)
-            if (date > today) {
-                events.push(event)
-            }
-
-        })
-        // console.log(events);
-
-        res.status(200).json({ upcomingEvents: events })
-    } catch (error) {
-        console.error(error.message);
-        res.status(500).json({ message: 'Internal Server Error' });
-    }
-}
 
 const subscriptionCheckout = async (req, res) => {
     try {
@@ -786,7 +808,8 @@ const approveEvent = async (req, res) => {
 
 const fileUploads = async (req, res) => {
     try {
-        const { logoBlob, homePageImageBlob, managerId } = req.body
+        const managerId = req.headers.roleid
+        const { logoBlob, homePageImageBlob } = req.body
 
         const logo = await cloudinary.uploader.upload(logoBlob, {
             public_id: `managerCustomers/logos/${managerId}`,
@@ -800,15 +823,16 @@ const fileUploads = async (req, res) => {
             // check what is upload preset is
         })
 
-        const manager = await Manager.findById(managerId)
+        const manager = getDocument({ _id: managerId }, "tenants", "AppTenants")
+
         manager.customize.logo = logo.secure_url
         manager.customize.homePageImage = homePageImage.secure_url
 
         const updated = await manager.save()
 
-        res.status(200).json({ message: "Files uploaded succes" })
+        res.status(200).json({ message: "Files uploaded succes", customerLink: updated.customerLink })
     } catch (error) {
-        console.log(error, "[roble")
+        console.log(error.message)
         res.status(500).json({ message: "Internal Server Error" })
     }
 }
@@ -854,7 +878,7 @@ module.exports = {
     otpVerification,
     resendOtp,
     completeSubscription,
-    createSubdomain,
+    // createSubdomain,
     addNewEvents,
     getEvents,
     editEvent,

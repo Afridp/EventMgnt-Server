@@ -23,7 +23,7 @@ const TenantSchemas = new Map([['tenant', tenantSchema]])
 const switchDB = async (dbName, dbSchema) => {
 
     const mongoose = await connectDB()
-    console.log(dbName);
+
     if (mongoose.connection.readyState === 1) {
         const db = mongoose.connection.useDb(dbName, { useCache: true })
         // Prevent from schema re-registration
@@ -38,20 +38,34 @@ const switchDB = async (dbName, dbSchema) => {
     }
     throw new Error('err')
 }
-
+// modelName === collectionName
 const getDBModel = async (db, modelName) => {
+    // return the collection we want 
     return db.model(modelName)
-}
+}            
 
 const getDocument = async (query, collectionName, dbname) => {
     try {
         
         const tenantDB = await switchDB(dbname, TenantSchemas);
-        const tenantModel = await getDBModel(tenantDB, collectionName);
-        const tenant = await tenantModel.findOne(query); // Using findOne to get a single document
-        return tenant; // Return the found tenant document
+        const Collection = await getDBModel(tenantDB, collectionName);
+        const item = await Collection.findOne(query); // Using findOne to get a single document
+        return item; // Return the found tenant document
     } catch (error) {
-        console.error('Error getting tenant:', error);
+        console.error('Error getting tenant:error....is not logged');
+        return null; // Return null if there's an error
+    }
+};
+
+const getDocuments = async (query, collectionName, dbname) => {
+    try {
+        
+        const tenantDB = await switchDB(dbname, TenantSchemas);
+        const Collection = await getDBModel(tenantDB, collectionName);
+        const item = await Collection.find(query); // Using findOne to get a single document
+        return item; // Return the found tenant document
+    } catch (error) {
+        console.error('Error getting tenant:error....is not logged');
         return null; // Return null if there's an error
     }
 };
@@ -59,5 +73,6 @@ const getDocument = async (query, collectionName, dbname) => {
 module.exports = {
     switchDB,
     getDBModel,
-    getDocument
+    getDocument,
+    getDocuments
 }

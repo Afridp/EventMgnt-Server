@@ -46,6 +46,9 @@ const tenantSchema = mongoose.Schema({
     paragraph: String,
     aboutUs: String
   },
+  customerLink : {
+    type : String
+  }
 })
 
 module.exports = tenantSchema

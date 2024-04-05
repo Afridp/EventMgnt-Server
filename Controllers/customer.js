@@ -158,7 +158,7 @@ const findCustomer = async (req, res) => {
 
 const getEvents = async (req, res) => {
     try {
-
+        console.log(req);
         const { search, sort } = req.query
         const query = { list: true };
 

@@ -41,7 +41,7 @@ const customCorsMiddleware = (req, res, next) => {
     // Allow other CORS headers
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, roleId');
 
     // Continue to the next middleware
     next();
@@ -53,7 +53,7 @@ app.use(customCorsMiddleware);
 // Define middleware to handle dynamic route redirection based on subdomain
 const dynamicRouteHandler = (req, res, next) => {
     const subdomain = req.hostname.split('.')[0];
-    console.log(subdomain, "hafdghsfgsdfgaai");
+
     // Dynamically redirect requests based on the subdomain
     switch (subdomain) {
         case 'manager':

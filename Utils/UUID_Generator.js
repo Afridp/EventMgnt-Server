@@ -1,5 +1,6 @@
 const Event = require('../Models/Event');
-const Manager = require('../Models/Manager') // Set to store generated UUIDs
+const Manager = require('../Models/Manager'); // Set to store generated UUIDs
+const { getDocument } = require('./dbHelper');
 
 async function generateManagerUUID() {
     let uuid;
@@ -13,7 +14,7 @@ async function generateManagerUUID() {
         uuid = `MR${randomNumber}`;
 
         // Check if the UUID exists in the database
-        const existingManager = await Manager.findOne({ uuid });
+        const existingManager = await getDocument({ uuid }, "tenants", "AppTenants")
 
         // If no manager with the same UUID is found, it's unique
         if (!existingManager) {

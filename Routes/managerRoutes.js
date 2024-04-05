@@ -5,11 +5,14 @@ const { managerTokenVerify } = require("../Middileware/mangerAuth");
 
 managerRoute.post('/createTanent', managerSignup)
 managerRoute.post('/otpVerification', otpVerification)
+managerRoute.post('/completeSubscription', completeSubscription)
 managerRoute.post('/resendOtp', resendOtp)
 
+// managerRoute.post('/createSubdomain',createSubdomain)
+
 managerRoute.post('/signin', managerSignin)
-managerRoute.post('/completeSubscription', completeSubscription)
-managerRoute.post('/createSubdomain',createSubdomain)
+managerRoute.get('/getTodaysEvents', managerTokenVerify, getTodaysEvents)
+managerRoute.get('/getUpcomingEvents', managerTokenVerify, getUpcomingEvents)
 
 managerRoute.get('/getEvents', getEvents)
 managerRoute.post('/addEvent', addNewEvents)
@@ -19,15 +22,13 @@ managerRoute.get(`/listing/:eventId`, listingAndUnlist)
 managerRoute.get('/getBookedEvents', managerTokenVerify, fetchAllBooking)
 managerRoute.get('/getEventData', getEventData)
 
-managerRoute.get('/getTodaysEvents', managerTokenVerify, getTodaysEvents)
-managerRoute.get('/getUpcomingEvents', managerTokenVerify, getUpcomingEvents)
 
 managerRoute.post('/subscribe', managerTokenVerify, manageSubscription)
 managerRoute.post('/addEmployee', addEmployee)
 managerRoute.get('/getAllEmployees', getAllEmployees)
 managerRoute.patch('/blockUnblockEmployee', blockUnblockEmployee)
 managerRoute.get('/getNewsubmissions', getNewSubmissions)
-managerRoute.get('/getFormOfEvent', getFormOfEvent)
+managerRoute.get('/getFormOfEvent', getFormOfEvent) 
 managerRoute.post('/submitForm', submitFormOfEvent)
 managerRoute.get('/getEmployees', getEmployees)
 managerRoute.post('/approveEvent', approveEvent)
