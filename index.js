@@ -41,7 +41,7 @@ const customCorsMiddleware = (req, res, next) => {
     // Allow other CORS headers
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, roleId');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, role');
 
     // Continue to the next middleware
     next();

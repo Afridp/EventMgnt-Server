@@ -15,7 +15,7 @@ const managerSchema = mongoose.Schema({
         type: String
     },
     companyMobile: {
-        type: Number
+        type: String
     },
     password: {
         type: String

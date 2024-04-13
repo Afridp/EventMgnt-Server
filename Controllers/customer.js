@@ -101,7 +101,10 @@ const resendOtp = async (req, res) => {
 const customerSignup = async (req, res) => {
     try {
         const { email, username, mobile, password } = req.body
-
+        const { mid } = req.params
+       
+        
+       
         const existCostomer = await Customer.findOne({
             $or: [
                 { mobile: mobile },

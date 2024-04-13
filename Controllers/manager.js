@@ -3,26 +3,14 @@ const bcrypt = require('bcryptjs')
 const cloudinary = require('../Utils/cloudinary');
 const hash = require('../Utils/bcryptPassword')
 
-
 const { default: Stripe } = require('stripe');
 const { generateManagerUUID, generateEventUUID } = require('../Utils/UUID_Generator');
 const { otpSendToMail, sendCredentialsToEmployee } = require('../Utils/mailSender')
 const { switchDB, getDBModel, getDocument, getDocuments } = require('../Utils/dbHelper');
 
-const Customer = require('../Models/Customer')
-const Manager = require('../Models/Manager')
-const Otp = require('../Models/Otp')
-const Event = require('../Models/Event')
-const TenantSchema = require('../Models/Tenants')
-const Booking = require('../Models/Booking');
+const Otp = require('../Models/Otp');
+const { TenantSchemas, CompanySchemas } = require('../Utils/dbSchemas');
 
-const Employee = require('../Models/Employee');
-const Form = require('../Models/Form');
-const FormSubmissions = require('../Models/FormSubmissions');
-const Wallet = require('../Models/Wallet');
-
-const TenantSchemas = new Map([['tenant', TenantSchema]])
-const CompanySchemas = new Map([['customer', Customer], ['booking', Booking], ['event', Event], ['form', Form], ['formSubmissions', FormSubmissions], ['wallet', Wallet], ['employee', Employee]])
 
 
 const managerSignup = async (req, res) => {
@@ -31,13 +19,15 @@ const managerSignup = async (req, res) => {
 
         const isCompanyExist = await getDocument({
             $or: [
-                { companyMobile: signupData },
-                { companyEmail: signupData }
+                { companyMobile: signupData.cmobile },
+                { companyEmail: signupData.cemail }
             ]
-        }, 'tenants', 'AppTenants')
-
+        }, 'tenant', 'AppTenants', TenantSchemas)
+        console.log("completed one");
         if (isCompanyExist) {
-            res.status(401).json({ message: "You have already registered with us ,Please Login to continue" })
+            //    TODO:this res is not working
+            res.status(404).json({ message: "You have already registered with us ,Please Login to continue" })
+
         } else {
             /**
              * Switches or create the Tenant database and gets the Tenant model.
@@ -60,7 +50,8 @@ const managerSignup = async (req, res) => {
                 password: spassword,
                 isEmailVerified: false,
                 subscribed: false,
-                customerLink: customerLink
+                customerLink: customerLink,
+                isBlocked: false
             })
             // const managerData = newManagr.save()
 
@@ -94,8 +85,8 @@ const otpVerification = async (req, res) => {
             await Otp.deleteMany({ _id: otpId });
 
 
-            const manager = await getDocument({ _id: managerId }, 'tenant', 'AppTenants')
-            console.log(manager);
+            const manager = await getDocument({ _id: managerId }, 'tenant', 'AppTenants', TenantSchemas)
+
             if (manager) {
                 manager['isEmailVerified'] = true
             }
@@ -148,7 +139,7 @@ const completeSubscription = async (req, res) => {
             subscriptionEndDate = new Date(currentDate)
             subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1)
 
-            const tenant = await getDocument({ _id: managerId }, 'tenant', 'AppTenants')
+            const tenant = await getDocument({ _id: managerId }, 'tenant', 'AppTenants', TenantSchemas)
             if (tenant) {
                 tenant['subscriptionStart'] = currentDate
                 tenant["subscriptionEnd"] = subscriptionEndDate
@@ -156,9 +147,9 @@ const completeSubscription = async (req, res) => {
                 tenant['subscriptionScheme'] = scheme
             }
             const updatedTanent = await tenant.save()
-            const tenantId = await updatedTanent._id.toString()
+            // const tenantId = await updatedTanent._id.toString()
 
-            await switchDB(tenantId, CompanySchemas)
+            await switchDB(updatedTanent.uuid, CompanySchemas)
 
 
 
@@ -171,7 +162,7 @@ const completeSubscription = async (req, res) => {
             subscriptionEndDate = new Date(currentDate)
             subscriptionEndDate.setFullYear(subscriptionEndDate.getFullYear() + 1)
 
-            const tenant = await getDocument({ _id: managerId }, "tenant", 'AppTenants')
+            const tenant = await getDocument({ _id: managerId }, "tenant", 'AppTenants', TenantSchemas)
             if (tenant) {
                 tenant['subscriptionStart'] = currentDate
                 tenant["subscriptionEnd"] = subscriptionEndDate
@@ -179,8 +170,8 @@ const completeSubscription = async (req, res) => {
                 tenant['subscriptionScheme'] = scheme
             }
             const updatedTanent = await tenant.save()
-            const tenantId = await updatedTanent._id.toString()
-            await switchDB(tenantId, CompanySchemas)
+            // const tenantId = await updatedTanent._id.toString()
+            await switchDB(updatedTanent.uuid, CompanySchemas)
 
             let endDate = subscriptionEndDate.toLocaleDateString("en-GB")
 
@@ -221,7 +212,7 @@ const managerSignin = async (req, res) => {
                 { username: signinDetails },
                 { companyEmail: signinDetails }
             ]
-        }, "tenant", "AppTenants")
+        }, "tenant", "AppTenants", TenantSchemas)
 
         if (istenantExist) {
             if (istenantExist.subscribed) {
@@ -266,14 +257,14 @@ const managerSignin = async (req, res) => {
 
 const getTodaysEvents = async (req, res) => {
     try {
-        const managerId = req.headers.roleid
+        const manager = req.headers.role
         const today = new Date();
         today.setHours(0, 0, 0, 0); // Set hours, minutes, seconds, and milliseconds to zero
 
         const tomorrow = new Date(today);
         tomorrow.setDate(today.getDate() + 1); // Get tomorrow's date
 
-        const tenantDB = await switchDB(managerId, CompanySchemas);
+        const tenantDB = await switchDB(manager, CompanySchemas);
         const Bookings = await getDBModel(tenantDB, "bookings")
 
         // Convert string startDate to Date type using $toDate aggregation operator
@@ -339,7 +330,7 @@ const getUpcomingEvents = async (req, res) => {
             }
 
         })
-        // console.log(events);
+
 
         res.status(200).json({ upcomingEvents: events })
     } catch (error) {
@@ -352,11 +343,8 @@ const getUpcomingEvents = async (req, res) => {
 
 const getEvents = async (req, res) => {
     try {
-        const managerId = req.headers.roleid
-
-        // Find events where the UUID starts with the managerUUID
-        const events = await getDocument({ managerId: managerId }, "events", managerId)
-
+        const manager = req.headers.role
+        const events = await getDocuments({}, "event", manager, CompanySchemas)
         res.status(200).json({ event: events });
     } catch (error) {
         console.error(error.message);
@@ -367,34 +355,33 @@ const getEvents = async (req, res) => {
 
 const addNewEvents = async (req, res) => {
     try {
-        const managerId = req.headers.roleid
+        const manager = req.headers.role
         const { eventName, eventDescription, image } = req.body
 
-        const existEvent = await getDocument({ eventName: eventName }, "events", managerId)
+        const existEvent = await getDocument({ eventName: eventName }, 'event', manager, CompanySchemas)
+
         if (!existEvent) {
             // const uuid = await generateEventUUID(managerUUID)
-
             const uploaded = await cloudinary.uploader.upload(image, {
                 public_id: `events/${eventName}`,
                 // uload_preset: 'mi_default',
                 // check what is upload preset is
             })
 
-            const db = switchDB(managerId, CompanySchemas)
-            const Event = getDBModel(db, "events")
-
+            const db = await switchDB(manager, CompanySchemas)
+            const Event = await getDBModel(db, 'event')
             const newEvent = await Event.create({
                 eventName,
                 eventDescription,
                 eventImage: uploaded.secure_url,
-                // uuid: uuid,
-                managerId: managerId,
                 list: false
+                // managerUUID: manager,
 
                 // imageBlob: image,
                 // Save the Cloudinary URL in the database
             })
             const savedEvent = await newEvent.save()
+            console.log(savedEvent);
             res.status(201).json({ message: 'Event added successfully', event: savedEvent });
         } else {
             res.status(403).json({ message: "Event you are trying to add is already exist,Try to add with new event" })
@@ -411,8 +398,8 @@ const getFormOfEvent = async (req, res) => {
     try {
         const managerId = req.headers.roleid
         const { eventId } = req.query
-       
-        const event =  await getDocument({ eventId: eventId }, "forms", managerId)
+
+        const event = await getDocument({ eventId: eventId }, "forms", managerId)
         if (!event?.formFields) {
             return res.status(200).json({ fields: [] })
         }
@@ -545,9 +532,10 @@ const getNewSubmissions = async (req, res) => {
 
 const getEventData = async (req, res) => {
     try {
+        const manager = req.headers.role
         const { eventId } = req.query
 
-        const eventData = await Booking.findById(eventId)
+        const eventData = await getDocument({ _id: eventId }, "bookings", manager, CompanySchemas)
 
         res.status(200).json({ eventData: eventData.formData, personalData: eventData.personalData })
     } catch (error) {
@@ -694,13 +682,14 @@ const manageSubscription = async (req, res) => {
 
 const getAllEmployees = async (req, res) => {
     try {
+        const manager = req.headers.role
         const { search } = req.query;
         let query = {};
 
         if (search) {
             query.name = { $regex: new RegExp(search, "i") };
         }
-        const employees = await Employees.find(query);
+        const employees = await getDocuments(query, 'employee', manager, CompanySchemas)
 
         if (employees) {
             res.status(200).json({ employees });
@@ -713,19 +702,23 @@ const getAllEmployees = async (req, res) => {
 
 const blockUnblockEmployee = async (req, res) => {
     try {
+        const manager = req.headers.role
         const { employeeId } = req.query
 
-        const employeeToBlock = await Employee.findById(employeeId);
-
+        // const employeeToBlock = await Employee.findById(employeeId);
+        const employeeToBlock = await getDocument({ _id: employeeId }, "employee", manager, CompanySchemas)
         // Toggle the value of the List field
         const newBlockValue = !employeeToBlock.isBlocked;
         // Update the event with the new value of the List field 
-        const updatedEmployee = await Employee.findByIdAndUpdate(
-            employeeId,
-            { $set: { isBlocked: newBlockValue } },
-            { new: true } // Returns the updated document
-        );
+        // const updatedEmployee = await Employee.findByIdAndUpdate(
+        //     employeeId,
+        //     { $set: { isBlocked: newBlockValue } },
+        //     { new: true } // Returns the updated document
+        // );
 
+        employeeToBlock['isBlocked'] = newBlockValue
+
+        const updatedEmployee = await employeeToBlock.save()
         res.status(200).json({
             message: 'Employee updated successfully',
             isBlocked: newBlockValue,
@@ -740,30 +733,25 @@ const blockUnblockEmployee = async (req, res) => {
 
 const addEmployee = async (req, res) => {
     try {
+        const manager = req.headers.role
         const { email } = req.body
 
-        const isEmployeeExist = await Employees.findOne({ email: email })
+        const isEmployeeExist = await getDocument({ email: email }, "employee", manager, CompanySchemas)
 
         if (!isEmployeeExist) {
-
-            const newEmployee = new Employees({
+            const db = await switchDB(manager, CompanySchemas)
+            const Employees = await getDBModel(db, 'employee')
+            const newEmployee = await Employees.create({
                 email: email
             })
-            let employee = await newEmployee.save()
-
-            const employeeId = await sendCredentialsToEmployee(employee.email)
-            employee.employeeId = employeeId
-            employee.employeePassword = employeeId
-
-            employee.save()
-
+            //    TODO:send created employee to frontend and update
+            await sendCredentialsToEmployee(email, manager)
             res.status(200).json({ message: "successfully added new employee,Employee Id and password sented" })
         } else {
             res.status(409).json({ message: 'This email is already added,try to add a new one' })
         }
-
     } catch (error) {
-        console.log(error.message);
+        console.log(error.message, "the ivide");
         res.status(500).json({ message: "Internal Server Error" })
     }
 }
@@ -856,14 +844,20 @@ const customizedAppearance = async (req, res) => {
 
 const customizedContents = async (req, res) => {
     try {
+        const manager = req.headers.role
         const { heading, paragraph, aboutUs, managerId } = req.body
-        const manager = await Manager.findById(managerId)
 
-        manager.customize.heading = heading
-        manager.customize.paragraph = paragraph
-        manager.customize.aboutUs = aboutUs
+        const cmanager = await getDocument({_id : managerId},"tenant",manager,TenantSchemas)
+        if(cmanager){
+            cmanager.customize["heading"] = heading
+            cmanager.customize["paragraph"] = paragraph
+            cmanager.customize["aboutUs"] = aboutUs
+        }
+        // manager.customize.heading = heading
+        // manager.customize.paragraph = paragraph
+        // manager.customize.aboutUs = aboutUs
 
-        const saved = await manager.save()
+       await cmanager.save()
         res.status(200).json({ message: "Content Changed Successfully" })
     } catch (error) {
         console.log(error.message);

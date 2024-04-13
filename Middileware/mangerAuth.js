@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { getDocument } = require('../Utils/dbHelper');
-
+const tenantSchema = require('../Models/Tenants');
+const TenantSchemas = new Map([['tenant', tenantSchema]])
 const managerTokenVerify = async (req, res, next) => {
   try {
     let token = req.headers.authorization;
@@ -18,7 +19,7 @@ const managerTokenVerify = async (req, res, next) => {
     // req.manager = verified.managerId;
 
     if (verified.role == 'manager') {
-      const manager = await getDocument({ _id: verified.managerId }, "tenant", "AppTenants")
+      const manager = await getDocument({ _id: verified.managerId }, "tenant", "AppTenants", TenantSchemas)
 
       if (manager.isBlocked) {
         return res.status(403).json({ message: 'Manager is Blocked' });

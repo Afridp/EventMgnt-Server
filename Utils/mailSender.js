@@ -2,7 +2,11 @@ const nodemailer = require('nodemailer')
 const otpGenerator = require('otp-generator')
 const Otp = require('../Models/Otp')
 const dotenv = require('dotenv')
-const Employee = require('../Models/Employee')
+
+const { getDocument } = require('./dbHelper')
+const { CompanySchemas } = require('./dbSchemas')
+
+
 dotenv.config()
 
 let transporter = nodemailer.createTransport({
@@ -68,7 +72,7 @@ const otpSendToMail = async (username, email, accountId) => {
 }
 
 
-const sendCredentialsToEmployee = async (email) => {
+const sendCredentialsToEmployee = async (email, dbName) => {
   try {
     function generateEmployeeId() {
       // Generate a random 5-digit number
@@ -83,7 +87,7 @@ const sendCredentialsToEmployee = async (email) => {
       while (!isUnique) {
         employeeId = generateEmployeeId();
         // Check if the generated ID already exists in the database
-        const existingEmployee = await Employee.findOne({ employeeId });
+        const existingEmployee = await getDocument({ employeeId }, 'employee', dbName, CompanySchemas);
         if (!existingEmployee) {
 
           isUnique = true;
@@ -125,6 +129,14 @@ const sendCredentialsToEmployee = async (email) => {
         </div>
       `
     };
+
+    let employees = await getDocument({ email: email }, "employee", dbName, CompanySchemas)
+    console.log(employees);
+    if (employees) {
+      employees['employeeId'] = employeeId
+      employees['employeePassword'] = employeeId
+    }
+    employees.save()
     transporter.sendMail(mailOptions, (error, info) => {
       if (error) {
         console.log(error);
@@ -133,7 +145,7 @@ const sendCredentialsToEmployee = async (email) => {
       }
     })
 
-    return employeeId
+    return null
   } catch (error) {
     console.error(error.message, "this is prob")
   }

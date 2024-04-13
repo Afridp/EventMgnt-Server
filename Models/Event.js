@@ -1,10 +1,10 @@
 const mongoose = require('mongoose')
 
 const eventSchema = mongoose.Schema({
-    uuid: {
-        type: String, 
-        unique: true 
-    },
+    // uuid: {
+    //     type: String, 
+    //     unique: true 
+    // },
     managerId : {
         type : mongoose.Schema.Types.ObjectId,
         ref : 'Manager'
@@ -24,7 +24,9 @@ const eventSchema = mongoose.Schema({
     // form : {
     //     type : Array
     // },
-
+    managerUUID : {
+        type : String
+    },
     list : {
         type : Boolean
     }
