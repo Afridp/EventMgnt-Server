@@ -17,23 +17,23 @@ managerRoute.get('/getUpcomingEvents', managerTokenVerify, getUpcomingEvents)
 managerRoute.get('/getEvents', getEvents)//
 managerRoute.post('/addEvent', addNewEvents)//
 managerRoute.patch('/editEvent', editEvent)
-managerRoute.get(`/listing/:eventId`, listingAndUnlist)
+managerRoute.get(`/listing/:eventId`, listingAndUnlist)//////////////////////////////
 
-managerRoute.get('/getBookedEvents', managerTokenVerify, fetchAllBooking)
-managerRoute.get('/getEventData', getEventData)
-
+managerRoute.get('/getBookedEvents', managerTokenVerify, fetchAllBooking)//
+managerRoute.get('/getEventData', getEventData)//
 managerRoute.get('/getAllEmployees', getAllEmployees)//
 managerRoute.post('/addEmployee', addEmployee)//
 
-managerRoute.post('/subscribe', managerTokenVerify, manageSubscription) 
+// managerRoute.post('/subscribe', managerTokenVerify, manageSubscription) 
 managerRoute.patch('/blockUnblockEmployee', blockUnblockEmployee)//
-managerRoute.get('/getNewsubmissions', getNewSubmissions)
-managerRoute.get('/getFormOfEvent', getFormOfEvent) 
-managerRoute.post('/submitForm', submitFormOfEvent)
-managerRoute.get('/getEmployees', getEmployees)
-managerRoute.post('/approveEvent', approveEvent)
-managerRoute.post('/fileUpload', fileUploads)
-managerRoute.post('/appearancePost', customizedAppearance)
+managerRoute.get('/getNewsubmissions', getNewSubmissions)//
+managerRoute.get('/getFormOfEvent', getFormOfEvent) //
+managerRoute.post('/submitForm', submitFormOfEvent)//
+
+managerRoute.get('/getEmployees', getEmployees)//
+managerRoute.post('/approveEvent', approveEvent)//
+managerRoute.post('/fileUpload', fileUploads)//
+managerRoute.post('/appearancePost', customizedAppearance)//
 managerRoute.post('/contentsPost',customizedContents)//
 
 

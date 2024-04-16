@@ -3,8 +3,8 @@ const otpGenerator = require('otp-generator')
 const Otp = require('../Models/Otp')
 const dotenv = require('dotenv')
 
-const { getDocument } = require('./dbHelper')
-const { CompanySchemas } = require('./dbSchemas')
+const { getDocument, getCollection } = require('./dbHelper')
+const { CompanySchemas, TenantSchemas } = require('./dbSchemas')
 
 
 dotenv.config()
@@ -17,7 +17,7 @@ let transporter = nodemailer.createTransport({
   }
 })
 
-const otpSendToMail = async (username, email, accountId) => {
+const otpSendToMail = async (username, email, accountId, dbName) => {
   try {
     let otp = otpGenerator.generate(4, { upperCaseAlphabets: false, specialChars: false, lowerCaseAlphabets: false });
 
@@ -48,6 +48,8 @@ const otpSendToMail = async (username, email, accountId) => {
             </div>
           `
     }
+    const Otp = await getCollection(dbName, 'otp', TenantSchemas)
+    
     const newOtp = new Otp({
       managerId: accountId,
       otp: otp,
@@ -74,6 +76,7 @@ const otpSendToMail = async (username, email, accountId) => {
 
 const sendCredentialsToEmployee = async (email, dbName) => {
   try {
+    const Employee = await getCollection(dbName, 'employee', CompanySchemas)
     function generateEmployeeId() {
       // Generate a random 5-digit number
       return `EM${Math.floor(10000 + Math.random() * 90000)}`;
@@ -87,7 +90,7 @@ const sendCredentialsToEmployee = async (email, dbName) => {
       while (!isUnique) {
         employeeId = generateEmployeeId();
         // Check if the generated ID already exists in the database
-        const existingEmployee = await getDocument({ employeeId }, 'employee', dbName, CompanySchemas);
+        const existingEmployee = await Employee.findOne({ email: email })
         if (!existingEmployee) {
 
           isUnique = true;
@@ -130,13 +133,14 @@ const sendCredentialsToEmployee = async (email, dbName) => {
       `
     };
 
-    let employees = await getDocument({ email: email }, "employee", dbName, CompanySchemas)
-    console.log(employees);
-    if (employees) {
-      employees['employeeId'] = employeeId
-      employees['employeePassword'] = employeeId
-    }
-    employees.save()
+    await Employee.updateOne({ email: email }, {
+      $set: {
+        employeeId: employeeId,
+        employeePassword: employeeId
+      }
+    })
+
+
     transporter.sendMail(mailOptions, (error, info) => {
       if (error) {
         console.log(error);

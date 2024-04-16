@@ -12,6 +12,8 @@ const { default: Stripe } = require('stripe')
 const FormSubmissions = require('../Models/FormSubmissions')
 const Wallet = require('../Models/Wallet')
 const generateTransactionId = require('../Utils/TransactionIdGenerator')
+const { getDocument, switchDB, getDBModel, getDocuments, getCollection } = require('../Utils/dbHelper')
+const { CompanySchemas } = require('../Utils/dbSchemas')
 
 
 
@@ -20,6 +22,9 @@ const generateTransactionId = require('../Utils/TransactionIdGenerator')
 const customerSignin = async (req, res) => {
     try {
         const { signinDetails, password } = req.body
+        const { mid } = req.params
+        const Customer = await getCollection(mid, 'customer', CompanySchemas)
+
 
         const existCustomer = await Customer.findOne({
             $or: [
@@ -27,9 +32,7 @@ const customerSignin = async (req, res) => {
                 { username: signinDetails }
             ]
         })
-
         if (existCustomer) {
-
             if (existCustomer.isEmailVerified) {
                 const isPassword = await bcrypt.compare(password, existCustomer.password)
 
@@ -55,6 +58,9 @@ const customerSignin = async (req, res) => {
 const otpVerification = async (req, res) => {
     try {
         const { enteredOtp, customerId, otpId } = req.body
+        const { mid } = req.params
+        const Otp = await getCollection("Apptenants", 'otp', TenantSchemas)
+        const Customer = await getCollection(mid, 'customer', CompanySchemas)
 
         const isOtp = await Otp.findOne({ _id: otpId })
         const correctOtp = isOtp.otp
@@ -67,6 +73,7 @@ const otpVerification = async (req, res) => {
         if (correctOtp === enteredOtp) {
 
             await Otp.deleteMany({ _id: otpId });
+
             await Customer.updateOne({ _id: customerId }, { $set: { isEmailVerified: true } });
 
             res.status(200).json({ status: true, message: "Registered succesfully You can login now" })
@@ -83,10 +90,11 @@ const otpVerification = async (req, res) => {
 const resendOtp = async (req, res) => {
     try {
         const { customerId } = req.params
+        const Customer = await getCollection(mid, 'customer', CompanySchemas)
 
         const data = await Customer.findOne({ _id: customerId })
 
-        const otpId = await otpSendToMail(data.userName, data.email, data._id)
+        const otpId = await otpSendToMail(data.userName, data.email, data._id, "AppTenants")
         if (otpId) {
             res.status(200).json({ message: `New otp sent to ${data.email}` })
         } else {
@@ -102,9 +110,9 @@ const customerSignup = async (req, res) => {
     try {
         const { email, username, mobile, password } = req.body
         const { mid } = req.params
-       
-        
-       
+        const Customer = await getCollection(mid, 'customer', CompanySchemas)
+        const Wallet = await getCollection(mid, 'wallet', CompanySchemas)
+
         const existCostomer = await Customer.findOne({
             $or: [
                 { mobile: mobile },
@@ -117,6 +125,7 @@ const customerSignup = async (req, res) => {
         } else {
             const spassword = await hash.hashPassword(password)
 
+
             const newCustomer = new Customer({
                 email: email,
                 userName: username,
@@ -125,15 +134,15 @@ const customerSignup = async (req, res) => {
                 isEmailVerified: false
             })
 
-            const savedCustomer = newCustomer.save()
-            
+            const savedCustomer = await newCustomer.save()
+
             const newWallet = new Wallet({
                 customerId: (await savedCustomer)._id,
                 balance: 0
             })
             await newWallet.save()
 
-            const otpId = await otpSendToMail((await savedCustomer).userName, (await savedCustomer).email, (await savedCustomer)._id)
+            const otpId = await otpSendToMail((await savedCustomer).userName, (await savedCustomer).email, (await savedCustomer)._id, "AppTenants")
 
             res.status(200).json({ customerId: (await savedCustomer)._id, otpId, message: `otp has been sent to ${email}` })
         }
@@ -145,7 +154,9 @@ const customerSignup = async (req, res) => {
 
 const findCustomer = async (req, res) => {
     try {
-        const { customerId } = req.params
+        const { customerId, mid } = req.params
+        const Customer = await getCollection(mid, 'customer', CompanySchemas)
+
         const isCustomerAvailable = await Customer.findById(customerId)
 
         if (isCustomerAvailable) {
@@ -160,9 +171,12 @@ const findCustomer = async (req, res) => {
 }
 
 const getEvents = async (req, res) => {
+
     try {
-        console.log(req);
+        const { mid } = req.params
         const { search, sort } = req.query
+        const Event = await getCollection(mid, 'event', CompanySchemas)
+
         const query = { list: true };
 
         if (search) {
@@ -192,6 +206,8 @@ const getEvents = async (req, res) => {
 const getEventFormField = async (req, res) => {
     try {
         const { eventId } = req.query
+        const { mid } = req.params
+        const Form = await getCollection(mid, 'form', CompanySchemas)
 
         const eventFormFeilds = await Form.findOne({ eventId: eventId })
         if (eventFormFeilds) {
@@ -208,9 +224,11 @@ const getEventFormField = async (req, res) => {
 
 const submitEvent = async (req, res) => {
     try {
-        const { customerId } = req.params;
+        const { customerId, mid } = req.params;
         const { eventId } = req.query
         const { formValues, personalValues, amount, walletMode } = req.body
+        const FormSubmissions = await getCollection(mid, "formSubmission", CompanySchemas)
+
         // TODO: to do when only getting managerid from frontend usr side 
         const newSubmission = new FormSubmissions({
             customerId,
@@ -220,15 +238,19 @@ const submitEvent = async (req, res) => {
             paidAmount: amount,
             status: "pending"
         })
+
         await newSubmission.save()
+
         if (walletMode) {
-            console.log(walletMode);
-            const wallet = await Wallet.findOneAndUpdate({ customerId: customerId }, {
+            const transactionId = await generateTransactionId()
+            const Wallet = await getCollection(mid, "wallet", CompanySchemas)
+
+            await Wallet.findOneAndUpdate({ customerId: customerId }, {
                 $inc: { balance: -amount },
                 $push: {
                     transactions: {
                         amount: amount,
-                        transactionId: await generateTransactionId(),
+                        transactionId: transactionId,
                         transactionType: "Debit"
                     }
                 }
@@ -243,66 +265,67 @@ const submitEvent = async (req, res) => {
     }
 }
 
-const bookEvent = async (req, res) => {
-    try {
-        const { customerId } = req.params;
-        const { eventId } = req.query
-        const { formValues, personalValues, amount } = req.body
+// const bookEvent = async (req, res) => {
+//     try {
+//         const { customerId,mid } = req.params;
+//         const { eventId } = req.query
+//         const { formValues, personalValues, amount } = req.body
+//         const Booking = await getCollection()
 
-        const newBooking = new Booking({
-            formData: formValues,
-            personalData: personalValues,
-            customerId,
-            eventId,
-            isAccepted: false,
-            status: "PENDING",
-            paidAmount: amount
+//         const newBooking = new Booking({
+//             formData: formValues,
+//             personalData: personalValues,
+//             customerId,
+//             eventId,
+//             isAccepted: false,
+//             status: "PENDING",
+//             paidAmount: amount
 
-        })
+//         })
 
-        await newBooking.save()
-
-
-        // let transformedSchema = {}
-
-        // formData.forEach(field => {
-        //     const { label, type, required } = field;
-        //     transformedSchema[label] = { type: getType(type), required };
-        // });
-
-        // const bookingModel = createDynamicModel(eventUUID, transformedSchema)
-
-        // formValues["customerId"] = customerId
+//         await newBooking.save()
 
 
-        // let image = null
-        // if (themeImage) {
-        //     let uploaded = await cloudinary.uploader.upload(themeImage, {
-        //         public_id: `booking/${eventName}`,
-        //         // uload_preset: 'mi_default',
+// let transformedSchema = {}
 
-        //         // check what is upload preset is
-        //     });
-        //     image = uploaded.secure_url
-        // }
+// formData.forEach(field => {
+//     const { label, type, required } = field;
+//     transformedSchema[label] = { type: getType(type), required };
+// });
 
-        // const newBook = new bookingModel(formValues)
+// const bookingModel = createDynamicModel(eventUUID, transformedSchema)
 
-        // await newBook.save()
+// formValues["customerId"] = customerId
 
 
+// let image = null
+// if (themeImage) {
+//     let uploaded = await cloudinary.uploader.upload(themeImage, {
+//         public_id: `booking/${eventName}`,
+//         // uload_preset: 'mi_default',
 
+//         // check what is upload preset is
+//     });
+//     image = uploaded.secure_url
+// }
 
-        // const savedEvent = await newEvent.save();
+// const newBook = new bookingModel(formValues)
+
+// await newBook.save()
 
 
 
-        res.status(201).json({ message: "Event created successfully" });
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({ message: "internal server Error" });
-    }
-};
+
+// const savedEvent = await newEvent.save();
+
+
+
+//         res.status(201).json({ message: "Event created successfully" });
+//     } catch (error) {
+//         console.log(error);
+//         res.status(500).json({ message: "internal server Error" });
+//     }
+// };
 
 const paymentCheckout = async (req, res) => {
     try {
@@ -340,11 +363,12 @@ const paymentCheckout = async (req, res) => {
     }
 }
 
-
 const getBookings = async (req, res) => {
     try {
-        const { customerId } = req.params
+        const { customerId, mid } = req.params
         const { search, sort } = req.query
+        const Booking = await getCollection(mid, 'booking', CompanySchemas)
+        const FormSubmissions = await getCollection(mid, 'formSubmission', CompanySchemas)
 
         let query = { customerId: customerId }
         // TODO:need to work on the search
@@ -354,6 +378,7 @@ const getBookings = async (req, res) => {
         }
 
         let bookings = []
+
 
         if (sort) {
             if (sort === 'dateAscending') {
@@ -388,7 +413,9 @@ const getBookings = async (req, res) => {
 
 const getSeeMoreEventData = async (req, res) => {
     try {
-        const { bookingId } = req.params
+        const { bookingId, mid } = req.params
+        const Booking = await getCollection(mid, 'booking', CompanySchemas)
+
         const event = await Booking.findById(bookingId)
 
         if (event) {
@@ -458,7 +485,7 @@ const editBooked = async (req, res) => {
 
             }
         })
-        console.log(event);
+
 
         res.status(201).json({ message: "Updated Successfully" })
 
@@ -469,26 +496,26 @@ const editBooked = async (req, res) => {
     }
 }
 
+
+// TODO:something to do with eventid 
 const cancelBooked = async (req, res) => {
     try {
-        const { eventId } = req.params;
-
+        const { eventId, mid } = req.params;
+        const Booking = await getCollection(mid, "booking", CompanySchemas)
+        const FormSubmissions = await getCollection(mid, "formSubmission", CompanySchemas)
+        const Wallet = await getCollection(mid, 'wallet', CompanySchemas)
 
         const bookingEvent = await Booking.findById(eventId)
         const formSubmissionEvent = await FormSubmissions.findById(eventId)
 
-
         const eventToDelete = bookingEvent ? bookingEvent : formSubmissionEvent;
-
 
         if (!eventToDelete) {
             return res.status(404).json({ message: "Event not found" });
         }
-
-
         if (eventToDelete.paidAmount) {
 
-            const wallet = await Wallet.findOneAndUpdate({ customerId: eventToDelete.customerId }, {
+            await Wallet.findOneAndUpdate({ customerId: eventToDelete.customerId }, {
                 $inc: { balance: eventToDelete.paidAmount },
                 $push: {
                     transactions: {
@@ -516,6 +543,9 @@ const updateProfilePic = async (req, res) => {
     try {
         const { profile } = req.body
         const { customerId } = req.query
+        const { mid } = req.params
+        const Customer = await getCollection(mid, "customer", CompanySchemas)
+
         const uploaded = await cloudinary.uploader.upload(profile, {
             public_id: `customerProfiles/${customerId}`,
             uload_preset: 'mi_default',
@@ -526,7 +556,6 @@ const updateProfilePic = async (req, res) => {
             $set: {
                 profilePic: uploaded.secure_url
             },
-
         },
             { new: true })
         res.status(200).json({ message: "Profile Image updated successfully", customerData: updated })
@@ -539,6 +568,8 @@ const updateProfile = async (req, res) => {
     try {
         const { userName, mobile, email } = req.body
         const { customerId } = req.query
+        const { mid } = req.params
+        const Customer = await getCollection(mid, "customer", CompanySchemas)
 
         const updated = await Customer.findByIdAndUpdate(customerId, {
             $set: {
@@ -559,6 +590,8 @@ const changePassword = async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body
         const { customerId } = req.query
+        const { mid } = req.params
+        const Customer = await getCollection(mid, "customer", CompanySchemas)
 
 
         const customer = await Customer.findById(customerId)
@@ -620,9 +653,12 @@ const topupWallet = async (req, res) => {
 const getWallet = async (req, res) => {
     try {
         const { customerId } = req.query
-        const wallet = await Wallet.findOne({ customerId: customerId })
+        const { mid } = req.params
+        const Wallet = await getCollection(mid, 'wallet', CompanySchemas)
 
-        res.status(200).json({ balance: wallet.balance, transactions: wallet.transactions })
+        const existWallet = await Wallet.findOne({ customerId: customerId })
+
+        res.status(200).json({ balance: existWallet.balance, transactions: existWallet.transactions })
 
     } catch (error) {
         console.log(error);
@@ -633,8 +669,12 @@ const getWallet = async (req, res) => {
 const addBalance = async (req, res) => {
     try {
         const { amt, customerId } = req.body;
+        const { mid } = req.params
         const transactionId = await generateTransactionId(); // Corrected variable name
-        const wallet = await Wallet.findOneAndUpdate(
+
+        const Wallet = await getCollection(mid, 'wallet', CompanySchemas)
+
+        const existWallet = await Wallet.findOneAndUpdate(
             { customerId: customerId },
             {
                 $inc: { balance: amt },
@@ -649,7 +689,7 @@ const addBalance = async (req, res) => {
             { new: true }
         );
 
-        if (wallet) {
+        if (existWallet) {
             res.status(200).json({ message: "Balance updated successfully" });
         } else {
             res.status(404).json({ message: "Wallet not found for the customerId" });
@@ -666,7 +706,6 @@ module.exports = {
     otpVerification,
     resendOtp,
     getEvents,
-    bookEvent,
     findCustomer,
     getBookings,
     getSeeMoreEventData,

@@ -6,43 +6,34 @@ const hash = require('../Utils/bcryptPassword')
 const { default: Stripe } = require('stripe');
 const { generateManagerUUID, generateEventUUID } = require('../Utils/UUID_Generator');
 const { otpSendToMail, sendCredentialsToEmployee } = require('../Utils/mailSender')
-const { switchDB, getDBModel, getDocument, getDocuments } = require('../Utils/dbHelper');
+const { switchDB, getDBModel, getDocument, getDocuments, getDocumentWithPopulate, deleteDocument, getCollection } = require('../Utils/dbHelper');
 
 const Otp = require('../Models/Otp');
 const { TenantSchemas, CompanySchemas } = require('../Utils/dbSchemas');
 
 
-
+// tenent signup
 const managerSignup = async (req, res) => {
     try {
         const { signupData } = req.body
+        const Manager = await getCollection('AppTenants', 'tenant', TenantSchemas)
 
-        const isCompanyExist = await getDocument({
+        const existManager = await Manager.findOne({
             $or: [
                 { companyMobile: signupData.cmobile },
                 { companyEmail: signupData.cemail }
             ]
-        }, 'tenant', 'AppTenants', TenantSchemas)
-        console.log("completed one");
-        if (isCompanyExist) {
+        })
+        if (existManager) {
             //    TODO:this res is not working
             res.status(404).json({ message: "You have already registered with us ,Please Login to continue" })
 
         } else {
-            /**
-             * Switches or create the Tenant database and gets the Tenant model.
-             * @returns {Model} The Tenant model for the current tenant.
-            */
-            const tenantDB = await switchDB("AppTenants", TenantSchemas);
-            /**
-             * Gets the Tenant model for the current tenant database.
-             * @returns {Model} The Tenant model for the current tenant.
-            */
-            const tenant = await getDBModel(tenantDB, "tenant");
             const spassword = await hash.hashPassword(signupData.password)
             const uuid = await generateManagerUUID();
             const customerLink = `http://customer.localhost:3000/${uuid}`
-            const createdTanent = await tenant.create({
+
+            const newManagr = new Manager({
                 uuid: uuid,
                 companyEmail: signupData.cemail,
                 username: signupData.username,
@@ -53,22 +44,26 @@ const managerSignup = async (req, res) => {
                 customerLink: customerLink,
                 isBlocked: false
             })
-            // const managerData = newManagr.save()
+            const createdTanent = await newManagr.save()
 
-            const otpId = await otpSendToMail((await createdTanent).username, (await createdTanent).companyEmail, (await createdTanent)._id)
+            const otpId = await otpSendToMail((await createdTanent).username, (await createdTanent).companyEmail, (await createdTanent)._id, "AppTenants")
 
             res.status(200).json({ managerId: (await createdTanent)._id, otpId, managerUUID: createdTanent.uuid, message: `otp has been sent to ${createdTanent.cemail}` })
         }
-        // }
+
     } catch (error) {
-        console.log(error);
+        console.log(error.message);
         res.status(500).json({ message: "internal server Error" })
     }
 }
 
+// tenant otp verification
 const otpVerification = async (req, res) => {
     try {
         const { enteredOtp, managerId, otpId, amount, scheme } = req.body
+        const Otp = await getCollection("Apptenants", 'otp', TenantSchemas)
+        const Manager = await getCollection("AppTenants", 'tenant', TenantSchemas)
+
         const stripeInstance = Stripe(process.env.STRIPE_SECRET_KEY)
 
         const isOtp = await Otp.findOne({ _id: otpId })
@@ -84,13 +79,8 @@ const otpVerification = async (req, res) => {
 
             await Otp.deleteMany({ _id: otpId });
 
+            await Manager.updateOne({ _id: managerId }, { $set: { isEmailVerified: true } });
 
-            const manager = await getDocument({ _id: managerId }, 'tenant', 'AppTenants', TenantSchemas)
-
-            if (manager) {
-                manager['isEmailVerified'] = true
-            }
-            await manager.save()
             // const event = await Event.findById(eventId)
             // TODO: change the urls according to manager url when manager sharded
             let success_url = `http://localhost:3000/?managerId=${managerId}&amount=${amount}&scheme=${scheme}`;
@@ -116,7 +106,6 @@ const otpVerification = async (req, res) => {
             })
 
             res.status(200).json({ status: true, sessionId: session.id, message: "Registered succesfully" })
-
         } else {
             res.status(200).json({ status: false, message: "Incorrect Otp,try again" })
         }
@@ -127,9 +116,12 @@ const otpVerification = async (req, res) => {
     }
 }
 
+// tenant subscription completing
 const completeSubscription = async (req, res) => {
     try {
         const { managerId, scheme } = req.body
+        const Manager = await getCollection("AppTenants", "tenant", TenantSchemas)
+
         let currentDate = new Date()
 
         let subscriptionEndDate
@@ -139,19 +131,18 @@ const completeSubscription = async (req, res) => {
             subscriptionEndDate = new Date(currentDate)
             subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1)
 
-            const tenant = await getDocument({ _id: managerId }, 'tenant', 'AppTenants', TenantSchemas)
-            if (tenant) {
-                tenant['subscriptionStart'] = currentDate
-                tenant["subscriptionEnd"] = subscriptionEndDate
-                tenant['subscribed'] = true
-                tenant['subscriptionScheme'] = scheme
-            }
-            const updatedTanent = await tenant.save()
+            const managerSubscribed = await Manager.findByIdAndUpdate(managerId, {
+                $set: {
+                    subscribed: true,
+                    subscriptionPlan: selectedPlan,
+                    subscriptionStart: currentDate,
+                    subscriptionEnd: subscriptionEndDate
+                },
+            }, { new: true })
+
             // const tenantId = await updatedTanent._id.toString()
 
-            await switchDB(updatedTanent.uuid, CompanySchemas)
-
-
+            await switchDB(managerSubscribed.uuid, CompanySchemas)
 
             let endDate = subscriptionEndDate.toLocaleDateString("en-GB")
 
@@ -162,16 +153,17 @@ const completeSubscription = async (req, res) => {
             subscriptionEndDate = new Date(currentDate)
             subscriptionEndDate.setFullYear(subscriptionEndDate.getFullYear() + 1)
 
-            const tenant = await getDocument({ _id: managerId }, "tenant", 'AppTenants', TenantSchemas)
-            if (tenant) {
-                tenant['subscriptionStart'] = currentDate
-                tenant["subscriptionEnd"] = subscriptionEndDate
-                tenant['subscribed'] = true
-                tenant['subscriptionScheme'] = scheme
-            }
-            const updatedTanent = await tenant.save()
+            const managerSubscribed = await Manager.findByIdAndUpdate(managerId, {
+                $set: {
+                    subscribed: true,
+                    subscriptionPlan: selectedPlan,
+                    subscriptionStart: currentDate,
+                    subscriptionEnd: subscriptionEndDate
+                },
+            }, { new: true })
+
             // const tenantId = await updatedTanent._id.toString()
-            await switchDB(updatedTanent.uuid, CompanySchemas)
+            await switchDB(managerSubscribed.uuid, CompanySchemas)
 
             let endDate = subscriptionEndDate.toLocaleDateString("en-GB")
 
@@ -185,14 +177,16 @@ const completeSubscription = async (req, res) => {
         res.status(500).json({ message: "Internal Server Error" })
     }
 }
-// TODO:change db
+
+// sigup resend otps 
 const resendOtp = async (req, res) => {
     try {
         const { managerId } = req.body
+        const Manager = await getCollection("AppTenants", 'tenant', TenantSchemas)
 
         const data = await Manager.findOne({ _id: managerId })
 
-        const otpId = await sendToMail(data.username, data.companyEmail, data._id)
+        const otpId = await otpSendToMail(data.username, data.companyEmail, data._id, "AppTenants")
         if (otpId) {
             res.status(200).json({ message: `New otp sent to ${data.companyEmail}` })
         }
@@ -202,25 +196,26 @@ const resendOtp = async (req, res) => {
     }
 }
 
+// tenant signing in
 const managerSignin = async (req, res) => {
     try {
-
         const { signinDetails, password } = req.body
+        const Manager = await getCollection("AppTenants", 'tenant', TenantSchemas)
 
-        const istenantExist = await getDocument({
+        const isTenantExist = await Manager.findOne({
             $or: [
                 { username: signinDetails },
                 { companyEmail: signinDetails }
             ]
-        }, "tenant", "AppTenants", TenantSchemas)
+        })
 
-        if (istenantExist) {
-            if (istenantExist.subscribed) {
-                if (istenantExist.isEmailVerified) {
-                    const isPassword = await bcrypt.compare(password, istenantExist.password)
+        if (isTenantExist) {
+            if (isTenantExist.subscribed) {
+                if (isTenantExist.isEmailVerified) {
+                    const isPassword = await bcrypt.compare(password, isTenantExist.password)
                     if (isPassword) {
-                        const token = jwt.sign({ managerId: istenantExist._id, role: "manager" }, process.env.TOKEN_KEY, { expiresIn: '1h' })
-                        res.status(200).json({ managerData: istenantExist, token, message: "login success" })
+                        const token = jwt.sign({ managerId: isTenantExist._id, role: "manager" }, process.env.TOKEN_KEY, { expiresIn: '1h' })
+                        res.status(200).json({ managerData: isTenantExist, token, message: "login success" })
                     } else {
                         res.status(401).json({ message: "password is incorrect please try again" })
                     }
@@ -255,17 +250,18 @@ const managerSignin = async (req, res) => {
 //     }
 // }
 
+// manager fetching todays events 
 const getTodaysEvents = async (req, res) => {
     try {
         const manager = req.headers.role
+        const Bookings = await getCollection(manager, 'booking', CompanySchemas)
+
         const today = new Date();
         today.setHours(0, 0, 0, 0); // Set hours, minutes, seconds, and milliseconds to zero
 
         const tomorrow = new Date(today);
         tomorrow.setDate(today.getDate() + 1); // Get tomorrow's date
 
-        const tenantDB = await switchDB(manager, CompanySchemas);
-        const Bookings = await getDBModel(tenantDB, "bookings")
 
         // Convert string startDate to Date type using $toDate aggregation operator
         const todaysEvents = await Bookings.aggregate([
@@ -299,8 +295,6 @@ const getTodaysEvents = async (req, res) => {
                 }
             }
         ]);
-
-
         res.status(200).json({ todaysEvents });
     } catch (error) {
         console.error(error.message);
@@ -308,16 +302,17 @@ const getTodaysEvents = async (req, res) => {
     }
 }
 
+// manager fetching upcoming events 
 const getUpcomingEvents = async (req, res) => {
     try {
-        const managerId = req.headers.roleid
+        const manager = req.headers.role
+        const Bookings = await getCollection(manager, 'booking', CompanySchemas)
+
         const today = new Date()
 
         // const upcomingEvents = await Booking.find({
         //     'formData.Date.startDate': { $gte: today }
         // });
-        const tenantDB = await switchDB(managerId, CompanySchemas);
-        const Bookings = await getDBModel(tenantDB, "bookings")
 
         const upcomingEvents = await Bookings.find().populate('eventId')
 
@@ -328,10 +323,7 @@ const getUpcomingEvents = async (req, res) => {
             if (date > today) {
                 events.push(event)
             }
-
         })
-
-
         res.status(200).json({ upcomingEvents: events })
     } catch (error) {
         console.error(error.message);
@@ -339,12 +331,13 @@ const getUpcomingEvents = async (req, res) => {
     }
 }
 
-
-
+// getiing manager's hosted event (my events)
 const getEvents = async (req, res) => {
     try {
         const manager = req.headers.role
-        const events = await getDocuments({}, "event", manager, CompanySchemas)
+        const Event = await getCollection(manager, 'event', CompanySchemas)
+
+        const events = await Event.find();
         res.status(200).json({ event: events });
     } catch (error) {
         console.error(error.message);
@@ -352,36 +345,34 @@ const getEvents = async (req, res) => {
     }
 };
 
-
+// adding or hosting new event by manager
 const addNewEvents = async (req, res) => {
     try {
         const manager = req.headers.role
         const { eventName, eventDescription, image } = req.body
+        const Event = await getCollection(manager, 'event', CompanySchemas)
 
-        const existEvent = await getDocument({ eventName: eventName }, 'event', manager, CompanySchemas)
+        const existEvent = await Event.findOne({ eventName: eventName })
 
         if (!existEvent) {
-            // const uuid = await generateEventUUID(managerUUID)
+            const uuid = await generateEventUUID(manager)
             const uploaded = await cloudinary.uploader.upload(image, {
                 public_id: `events/${eventName}`,
                 // uload_preset: 'mi_default',
                 // check what is upload preset is
             })
 
-            const db = await switchDB(manager, CompanySchemas)
-            const Event = await getDBModel(db, 'event')
-            const newEvent = await Event.create({
+            const newEvent = new Event({
                 eventName,
                 eventDescription,
                 eventImage: uploaded.secure_url,
+                uuid: uuid,
                 list: false
-                // managerUUID: manager,
 
                 // imageBlob: image,
                 // Save the Cloudinary URL in the database
             })
             const savedEvent = await newEvent.save()
-            console.log(savedEvent);
             res.status(201).json({ message: 'Event added successfully', event: savedEvent });
         } else {
             res.status(403).json({ message: "Event you are trying to add is already exist,Try to add with new event" })
@@ -392,27 +383,31 @@ const addNewEvents = async (req, res) => {
     }
 }
 
-// ////////////////////////////////////////
-
+// getting form of a hosted event
 const getFormOfEvent = async (req, res) => {
     try {
-        const managerId = req.headers.roleid
+        const manager = req.headers.role
         const { eventId } = req.query
+        const Form = await getCollection(manager, 'form', CompanySchemas)
 
-        const event = await getDocument({ eventId: eventId }, "forms", managerId)
+        const event = await Form.findOne({ eventId: eventId })
         if (!event?.formFields) {
             return res.status(200).json({ fields: [] })
+        } else {
+            res.status(200).json({ fields: event.formFields, isChecked: event.personalFormFields })
         }
-        res.status(200).json({ fields: event.formFields, isChecked: event.personalFormFields })
     } catch (error) {
         console.log(error.message);
         res.status(500).json({ message: "Internal Server Error" })
     }
 }
 
+// submitting a new form for a hosted event
 const submitFormOfEvent = async (req, res) => {
     try {
+        const manager = req.headers.role
         const { eventId, fields, managerId, isChecked } = req.body
+        const Form = await getCollection(manager, 'form', CompanySchemas)
 
         const isEventFormExist = await Form.findOne({ eventId: eventId })
 
@@ -441,22 +436,13 @@ const submitFormOfEvent = async (req, res) => {
             })
             res.status(200).json({ message: "successfully created form" })
         }
-
-        // await Forms.f({ uuid: eventUUID }, {
-        //     $set: {
-        //         form: fields,
-
-        //         list: true
-        //     }
-        // })
-
-
     } catch (error) {
         console.log(error.message);
         res.status(500).json({ message: "Internal Server Error" })
     }
 }
 
+// to edit hosted event not done
 const editEvent = async (req, res) => {
     try {
         const { eventName, eventDescription, _id } = req.body
@@ -477,18 +463,21 @@ const editEvent = async (req, res) => {
     }
 }
 
+// to list and unlist hosted event
 const listingAndUnlist = async (req, res) => {
     try {
+        const manager = req.headers.role
         const { eventId } = req.params;
+        const Event = await getCollection(manager, 'event', CompanySchemas)
 
         // Find the current event by ID
-        const currentEvent = await Event.findById(eventId);
+        const currentEvent = await Event.findById(eventId)
 
         // Toggle the value of the List field
         const newListValue = !currentEvent.list;
 
         // Update the event with the new value of the List field
-        const updatedEvent = await Event.findByIdAndUpdate(
+        await Event.findByIdAndUpdate(
             eventId,
             { $set: { list: newListValue } },
             { new: true } // Returns the updated document
@@ -505,8 +494,11 @@ const listingAndUnlist = async (req, res) => {
     }
 };
 
+// to get all bookings 
 const fetchAllBooking = async (req, res) => {
     try {
+        const manager = req.headers.role
+        const Booking = await getCollection(manager, 'booking', CompanySchemas)
 
         const bookings = await Booking.find().populate("eventId")
 
@@ -518,8 +510,12 @@ const fetchAllBooking = async (req, res) => {
     }
 }
 
+// to get new submissions of bookings
 const getNewSubmissions = async (req, res) => {
     try {
+        const manager = req.headers.role
+        const FormSubmissions = await getCollection(manager, 'formSubmissions', CompanySchemas)
+
         const newSubmissions = await FormSubmissions.find().populate("eventId")
         if (newSubmissions) {
             res.status(200).json({ newSubmissions })
@@ -530,12 +526,14 @@ const getNewSubmissions = async (req, res) => {
     }
 }
 
+// to get event detatils of each submissions
 const getEventData = async (req, res) => {
     try {
         const manager = req.headers.role
         const { eventId } = req.query
+        const Booking = await getCollection(manager, "booking", CompanySchemas)
 
-        const eventData = await getDocument({ _id: eventId }, "bookings", manager, CompanySchemas)
+        const eventData = await Booking.findById(eventId)
 
         res.status(200).json({ eventData: eventData.formData, personalData: eventData.personalData })
     } catch (error) {
@@ -544,124 +542,118 @@ const getEventData = async (req, res) => {
     }
 }
 
+// const subscriptionCheckout = async (req, res) => {
+//     try {
+//         const stripeInstance = Stripe(process.env.STRIPE_SECRET_KEY)
+//         const { selectedPlan, amnt } = req.body
+
+//         // const event = await Event.findById(eventId)
+//         // TODO: change the urls according to manager url when manager sharded
+//         let success_url = `http://localhost:3000/manager/subscibed?plan=${selectedPlan}`;
+//         let cancel_url = `http://localhost:3000/manager/pro`
+//         const lineItems = [{
+//             price_data: {
+//                 currency: "inr",
+//                 product_data: {
+//                     name: `Choosed Plan ${selectedPlan}`,
+
+//                 },
+//                 unit_amount: amnt * 100
+//             },
+//             quantity: 1
+//         }]
+
+//         const session = await stripeInstance.checkout.sessions.create({
+//             payment_method_types: ["card"],
+//             line_items: lineItems,
+//             mode: "payment",
+//             success_url: success_url,
+//             cancel_url: cancel_url
+//         })
+
+//         res.status(200).json({ sessionId: session.id })
+//     } catch (error) {
+//         console.log(error);
+//         res.status(500).json({ message: "internal server Error" });
+//     }
+// }
+
+// const manageSubscription = async (req, res) => {
+//     try {
+//         const { selectedPlan, managerId } = req.body
+
+//         let currentDate = new Date()
+
+//         let subscriptionEndDate
+
+//         if (selectedPlan === "Trail") {
+
+//             let trailEndDate = new Date()
+//             trailEndDate.setDate(trailEndDate.getDate() + 30)
 
 
+//             const managerSubscribed = await Manager.findByIdAndUpdate(managerId, {
+//                 $set: {
+//                     subscribed: true,
+//                     subscriptionPlan: selectedPlan,
+//                     subscriptionStart: currentDate,
+//                     subscriptionEnd: trailEndDate,
+//                     isTrailed: true
+//                 },
+//             }, { new: true })
+
+//             let endDate = trailEndDate.toLocaleDateString("en-GB")
+
+//             res.status(200).json({ message: `Yeeh..You have subscribed successfully. Your free trial ends at ${endDate}`, managerSubscribed })
+
+//         } else if (selectedPlan === "Monthly") {
+
+//             subscriptionEndDate = new Date(currentDate)
+//             subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1)
 
 
+//             const managerSubscribed = await Manager.findByIdAndUpdate(managerId, {
+//                 $set: {
+//                     subscribed: true,
+//                     subscriptionPlan: selectedPlan,
+//                     subscriptionStart: currentDate,
+//                     subscriptionEnd: subscriptionEndDate
+//                 },
+//             }, { new: true })
+
+//             let endDate = subscriptionEndDate.toLocaleDateString("en-GB")
+
+//             res.status(200).json({ message: `Subscription successful. Your subscription ends at ${endDate}`, managerSubscribed })
+
+//         } else if (selectedPlan === "Yearly") {
+
+//             subscriptionEndDate = new Date(currentDate)
+//             subscriptionEndDate.setFullYear(subscriptionEndDate.getFullYear() + 1)
 
 
-const subscriptionCheckout = async (req, res) => {
-    try {
-        const stripeInstance = Stripe(process.env.STRIPE_SECRET_KEY)
-        const { selectedPlan, amnt } = req.body
-
-        // const event = await Event.findById(eventId)
-        // TODO: change the urls according to manager url when manager sharded
-        let success_url = `http://localhost:3000/manager/subscibed?plan=${selectedPlan}`;
-        let cancel_url = `http://localhost:3000/manager/pro`
-        const lineItems = [{
-            price_data: {
-                currency: "inr",
-                product_data: {
-                    name: `Choosed Plan ${selectedPlan}`,
-
-                },
-                unit_amount: amnt * 100
-            },
-            quantity: 1
-        }]
-
-        const session = await stripeInstance.checkout.sessions.create({
-            payment_method_types: ["card"],
-            line_items: lineItems,
-            mode: "payment",
-            success_url: success_url,
-            cancel_url: cancel_url
-        })
-
-        res.status(200).json({ sessionId: session.id })
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({ message: "internal server Error" });
-    }
-}
-
-const manageSubscription = async (req, res) => {
-    try {
-        const { selectedPlan, managerId } = req.body
-
-        let currentDate = new Date()
-
-        let subscriptionEndDate
-
-        if (selectedPlan === "Trail") {
-
-            let trailEndDate = new Date()
-            trailEndDate.setDate(trailEndDate.getDate() + 30)
+//             const managerSubscribed = await Manager.findByIdAndUpdate(managerId, {
+//                 $set: {
+//                     subscribed: true,
+//                     subscriptionPlan: selectedPlan,
+//                     subscriptionStart: currentDate,
+//                     subscriptionEnd: subscriptionEndDate
+//                 },
+//             }, { new: true })
 
 
-            const managerSubscribed = await Manager.findByIdAndUpdate(managerId, {
-                $set: {
-                    subscribed: true,
-                    subscriptionPlan: selectedPlan,
-                    subscriptionStart: currentDate,
-                    subscriptionEnd: trailEndDate,
-                    isTrailed: true
-                },
-            }, { new: true })
+//             let endDate = subscriptionEndDate.toLocaleDateString("en-GB")
 
-            let endDate = trailEndDate.toLocaleDateString("en-GB")
+//             res.status(200).json({ message: `Subscription successful. Your subscription ends at ${endDate}`, managerSubscribed })
 
-            res.status(200).json({ message: `Yeeh..You have subscribed successfully. Your free trial ends at ${endDate}`, managerSubscribed })
+//         } else {
+//             res.status(400).json({ message: "Invalid subscription plan" });
+//         }
 
-        } else if (selectedPlan === "Monthly") {
-
-            subscriptionEndDate = new Date(currentDate)
-            subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1)
-
-
-            const managerSubscribed = await Manager.findByIdAndUpdate(managerId, {
-                $set: {
-                    subscribed: true,
-                    subscriptionPlan: selectedPlan,
-                    subscriptionStart: currentDate,
-                    subscriptionEnd: subscriptionEndDate
-                },
-            }, { new: true })
-
-            let endDate = subscriptionEndDate.toLocaleDateString("en-GB")
-
-            res.status(200).json({ message: `Subscription successful. Your subscription ends at ${endDate}`, managerSubscribed })
-
-        } else if (selectedPlan === "Yearly") {
-
-            subscriptionEndDate = new Date(currentDate)
-            subscriptionEndDate.setFullYear(subscriptionEndDate.getFullYear() + 1)
-
-
-            const managerSubscribed = await Manager.findByIdAndUpdate(managerId, {
-                $set: {
-                    subscribed: true,
-                    subscriptionPlan: selectedPlan,
-                    subscriptionStart: currentDate,
-                    subscriptionEnd: subscriptionEndDate
-                },
-            }, { new: true })
-
-
-            let endDate = subscriptionEndDate.toLocaleDateString("en-GB")
-
-            res.status(200).json({ message: `Subscription successful. Your subscription ends at ${endDate}`, managerSubscribed })
-
-        } else {
-            res.status(400).json({ message: "Invalid subscription plan" });
-        }
-
-    } catch (error) {
-        console.error(error.message);
-        res.status(500).json({ message: 'Internal Server Error' });
-    }
-}
+//     } catch (error) {
+//         console.error(error.message);
+//         res.status(500).json({ message: 'Internal Server Error' });
+//     }
+// }
 
 
 // const isSubscribed = async (req, res) => {
@@ -680,16 +672,19 @@ const manageSubscription = async (req, res) => {
 //     }
 // }
 
+// to get all employees available
 const getAllEmployees = async (req, res) => {
     try {
         const manager = req.headers.role
         const { search } = req.query;
+        const Employee = await getCollection(manager, 'employee', CompanySchemas)
+
         let query = {};
 
         if (search) {
             query.name = { $regex: new RegExp(search, "i") };
         }
-        const employees = await getDocuments(query, 'employee', manager, CompanySchemas)
+        const employees = await Employee.find(query);
 
         if (employees) {
             res.status(200).json({ employees });
@@ -700,25 +695,23 @@ const getAllEmployees = async (req, res) => {
     }
 };
 
+// to block and unblock employees
 const blockUnblockEmployee = async (req, res) => {
     try {
         const manager = req.headers.role
         const { employeeId } = req.query
+        const Employee = await getCollection(manager, 'employee', CompanySchemas)
 
-        // const employeeToBlock = await Employee.findById(employeeId);
-        const employeeToBlock = await getDocument({ _id: employeeId }, "employee", manager, CompanySchemas)
+
+        const employeeToBlock = await Employee.findById(employeeId);
         // Toggle the value of the List field
         const newBlockValue = !employeeToBlock.isBlocked;
         // Update the event with the new value of the List field 
-        // const updatedEmployee = await Employee.findByIdAndUpdate(
-        //     employeeId,
-        //     { $set: { isBlocked: newBlockValue } },
-        //     { new: true } // Returns the updated document
-        // );
-
-        employeeToBlock['isBlocked'] = newBlockValue
-
-        const updatedEmployee = await employeeToBlock.save()
+        const updatedEmployee = await Employee.findByIdAndUpdate(
+            employeeId,
+            { $set: { isBlocked: newBlockValue } },
+            { new: true } // Returns the updated document
+        );
         res.status(200).json({
             message: 'Employee updated successfully',
             isBlocked: newBlockValue,
@@ -730,20 +723,20 @@ const blockUnblockEmployee = async (req, res) => {
     }
 }
 
-
+// to add employee
 const addEmployee = async (req, res) => {
     try {
         const manager = req.headers.role
         const { email } = req.body
+        const Employee = await getCollection(manager, 'employee', CompanySchemas)
 
-        const isEmployeeExist = await getDocument({ email: email }, "employee", manager, CompanySchemas)
+        const isEmployeeExist = await Employee.findOne({ email: email })
 
         if (!isEmployeeExist) {
-            const db = await switchDB(manager, CompanySchemas)
-            const Employees = await getDBModel(db, 'employee')
-            const newEmployee = await Employees.create({
+            const newEmployee = new Employee({
                 email: email
             })
+            let employee = await newEmployee.save()
             //    TODO:send created employee to frontend and update
             await sendCredentialsToEmployee(email, manager)
             res.status(200).json({ message: "successfully added new employee,Employee Id and password sented" })
@@ -756,9 +749,13 @@ const addEmployee = async (req, res) => {
     }
 }
 
+// to get employees for assgning a event
 const getEmployees = async (req, res) => {
     try {
-        const employees = await Employees.find({}, { name: 1 })
+        const manager = req.headers.role
+        const Employee = await getCollection(manager, 'employee', CompanySchemas)
+
+        const employees = await Employee.find({}, { name: 1 })
 
         res.status(200).json({ employees })
     } catch (error) {
@@ -767,9 +764,13 @@ const getEmployees = async (req, res) => {
     }
 }
 
+// to approve events (orders)
 const approveEvent = async (req, res) => {
     try {
+        const manager = req.headers.role
         const { submissionId } = req.body
+        const FormSubmissions = await getCollection(manager, "formSubmission", CompanySchemas)
+        const Booking = await getCollection(manager, 'booking', CompanySchemas)
 
         const submission = await FormSubmissions.findById(submissionId)
 
@@ -796,8 +797,8 @@ const approveEvent = async (req, res) => {
 
 const fileUploads = async (req, res) => {
     try {
-        const managerId = req.headers.roleid
-        const { logoBlob, homePageImageBlob } = req.body
+        const { logoBlob, homePageImageBlob, managerId } = req.body
+        const Manager = await getCollection("AppTenants", "tenant", TenantSchemas)
 
         const logo = await cloudinary.uploader.upload(logoBlob, {
             public_id: `managerCustomers/logos/${managerId}`,
@@ -811,14 +812,14 @@ const fileUploads = async (req, res) => {
             // check what is upload preset is
         })
 
-        const manager = getDocument({ _id: managerId }, "tenants", "AppTenants")
+        await Manager.findByIdAndUpdate(managerId, {
+            $set: {
+                'customize.logo': logo.secure_url,
+                'customize.homePageImage': homePageImage.secure_url
+            }
+        })
 
-        manager.customize.logo = logo.secure_url
-        manager.customize.homePageImage = homePageImage.secure_url
-
-        const updated = await manager.save()
-
-        res.status(200).json({ message: "Files uploaded succes", customerLink: updated.customerLink })
+        res.status(200).json({ message: "Files uploaded succes", customerLink: Manager.customerLink })
     } catch (error) {
         console.log(error.message)
         res.status(500).json({ message: "Internal Server Error" })
@@ -828,14 +829,14 @@ const fileUploads = async (req, res) => {
 const customizedAppearance = async (req, res) => {
     try {
         const { themeColor, managerId } = req.body
+        const Manager = await getCollection("AppTenants", "tenant", TenantSchemas)
 
-        const manager = await Manager.findById(managerId)
-
-        manager.customize.themeColor = themeColor
-
-        const updated = await manager.save()
+        await Manager.findByIdAndUpdate(managerId, {
+            $set: {
+                'customize.themeColor': themeColor
+            }
+        })
         res.status(200).json({ message: "Color Changed Success" })
-
     } catch (error) {
         console.log(error.message);
         res.status(500).json({ message: "Internal Server Error" })
@@ -844,20 +845,16 @@ const customizedAppearance = async (req, res) => {
 
 const customizedContents = async (req, res) => {
     try {
-        const manager = req.headers.role
         const { heading, paragraph, aboutUs, managerId } = req.body
+        const Manager = await getCollection("AppTenants", "tenant", TenantSchemas)
 
-        const cmanager = await getDocument({_id : managerId},"tenant",manager,TenantSchemas)
-        if(cmanager){
-            cmanager.customize["heading"] = heading
-            cmanager.customize["paragraph"] = paragraph
-            cmanager.customize["aboutUs"] = aboutUs
-        }
-        // manager.customize.heading = heading
-        // manager.customize.paragraph = paragraph
-        // manager.customize.aboutUs = aboutUs
-
-       await cmanager.save()
+        await Manager.findByIdAndUpdate(managerId, {
+            $set: {
+                'customize.heading' : heading,
+                'customize.paragraph' : paragraph,
+                'customize.aboutUs' : aboutUs
+             }
+        })
         res.status(200).json({ message: "Content Changed Successfully" })
     } catch (error) {
         console.log(error.message);
@@ -881,7 +878,7 @@ module.exports = {
     getEventData,
     getTodaysEvents,
     getUpcomingEvents,
-    manageSubscription,
+    // manageSubscription,
     getAllEmployees,
     blockUnblockEmployee,
     getNewSubmissions,

@@ -1,9 +1,10 @@
- // Set to store generated UUIDs
-const { getDocument } = require('./dbHelper');
-const { TenantSchemas } = require('./dbSchemas');
+// Set to store generated UUIDs
+const { getCollection } = require('./dbHelper');
+const { TenantSchemas, CompanySchemas } = require('./dbSchemas');
 
 
 async function generateManagerUUID() {
+    const Manager = await getCollection("AppTenants", 'tenents', TenantSchemas)
     let uuid;
     let isUnique = false;
     // Loop until a unique UUID is generated
@@ -15,7 +16,7 @@ async function generateManagerUUID() {
         uuid = `MR${randomNumber}`;
 
         // Check if the UUID exists in the database
-        const existingManager = await getDocument({ uuid }, "tenants", "AppTenants",TenantSchemas)
+        const existingManager = await Manager.findOne({ uuid });
 
         // If no manager with the same UUID is found, it's unique
         if (!existingManager) {
@@ -26,6 +27,7 @@ async function generateManagerUUID() {
 }
 
 async function generateEventUUID(managerUUID) {
+    const Event = await getCollection(managerUUID,'event',CompanySchemas)
     let uuid;
     let isUnique = false;
 
