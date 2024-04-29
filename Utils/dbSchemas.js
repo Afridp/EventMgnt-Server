@@ -4,11 +4,11 @@ const employeeSchema = require("../Models/Employee")
 const eventSchema = require("../Models/Event")
 const formsSchema = require("../Models/Form")
 const formSubmissionsSchema = require("../Models/FormSubmissions")
-const Otp = require("../Models/Otp")
+const otp = require("../Models/Otp")
 const tenantSchema = require("../Models/Tenants")
 const walletSchema = require("../Models/Wallet")
 
-const TenantSchemas = new Map([['tenant', tenantSchema],['otp', Otp]])
+const TenantSchemas = new Map([['tenant', tenantSchema],['otp', otp]])
 const CompanySchemas = new Map([['customer', customerSchema], ['booking', bookingSchema], ['event', eventSchema], ['form', formsSchema], ['formSubmissions', formSubmissionsSchema], ['wallet', walletSchema], ['employee', employeeSchema]])
 
 module.exports = {

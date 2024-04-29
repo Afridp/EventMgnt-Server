@@ -26,13 +26,13 @@ const getDBModel = async (db, modelName) => {
     // return the collection we want
 }
 
-const getCollection = async(dbName,modelName,dbSchema) => {
-    const db = await switchDB(dbName,dbSchema)
-    const collection = await getDBModel(db,modelName)
+const getCollection = async (dbName, modelName, dbSchema) => {
+    const db = await switchDB(dbName, dbSchema)
+    const collection = await getDBModel(db, modelName)
     return collection
 }
 
-
+          
 const getDocument = async (query, collectionName, dbname, schemas) => {
     try {
 

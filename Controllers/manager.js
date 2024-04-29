@@ -16,7 +16,7 @@ const { TenantSchemas, CompanySchemas } = require('../Utils/dbSchemas');
 const managerSignup = async (req, res) => {
     try {
         const { signupData } = req.body
-        const Manager = await getCollection('AppTenants', 'tenant', TenantSchemas)
+        const Manager = await getCollection('AppTenants','tenant', TenantSchemas)
 
         const existManager = await Manager.findOne({
             $or: [
@@ -61,7 +61,7 @@ const managerSignup = async (req, res) => {
 const otpVerification = async (req, res) => {
     try {
         const { enteredOtp, managerId, otpId, amount, scheme } = req.body
-        const Otp = await getCollection("Apptenants", 'otp', TenantSchemas)
+        const Otp = await getCollection("AppTenants", 'otp', TenantSchemas)
         const Manager = await getCollection("AppTenants", 'tenant', TenantSchemas)
 
         const stripeInstance = Stripe(process.env.STRIPE_SECRET_KEY)
@@ -120,8 +120,9 @@ const otpVerification = async (req, res) => {
 const completeSubscription = async (req, res) => {
     try {
         const { managerId, scheme } = req.body
+        console.log(typeof(scheme));
         const Manager = await getCollection("AppTenants", "tenant", TenantSchemas)
-
+        console.log(Manager);
         let currentDate = new Date()
 
         let subscriptionEndDate
@@ -134,7 +135,7 @@ const completeSubscription = async (req, res) => {
             const managerSubscribed = await Manager.findByIdAndUpdate(managerId, {
                 $set: {
                     subscribed: true,
-                    subscriptionPlan: selectedPlan,
+                    subscriptionPlan: scheme,
                     subscriptionStart: currentDate,
                     subscriptionEnd: subscriptionEndDate
                 },
@@ -155,10 +156,11 @@ const completeSubscription = async (req, res) => {
 
             const managerSubscribed = await Manager.findByIdAndUpdate(managerId, {
                 $set: {
-                    subscribed: true,
-                    subscriptionPlan: selectedPlan,
+                    subscribed: true,     
+                    subscriptionPlan: scheme,
                     subscriptionStart: currentDate,
-                    subscriptionEnd: subscriptionEndDate
+                    subscriptionEnd: subscriptionEndDate,
+                   
                 },
             }, { new: true })
 
@@ -736,9 +738,10 @@ const addEmployee = async (req, res) => {
             const newEmployee = new Employee({
                 email: email
             })
-            let employee = await newEmployee.save()
+            await newEmployee.save()
             //    TODO:send created employee to frontend and update
-            await sendCredentialsToEmployee(email, manager)
+           await sendCredentialsToEmployee(email, manager)
+        
             res.status(200).json({ message: "successfully added new employee,Employee Id and password sented" })
         } else {
             res.status(409).json({ message: 'This email is already added,try to add a new one' })
@@ -746,7 +749,7 @@ const addEmployee = async (req, res) => {
     } catch (error) {
         console.log(error.message, "the ivide");
         res.status(500).json({ message: "Internal Server Error" })
-    }
+    } 
 }
 
 // to get employees for assgning a event

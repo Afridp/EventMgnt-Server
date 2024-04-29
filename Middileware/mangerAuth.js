@@ -1,11 +1,12 @@
 const jwt = require('jsonwebtoken');
-const { getDocument } = require('../Utils/dbHelper');
-const tenantSchema = require('../Models/Tenants');
-const TenantSchemas = new Map([['tenant', tenantSchema]])
+const { getCollection } = require('../Utils/dbHelper');
+const { TenantSchemas } = require('../Utils/dbSchemas');
+// const TenantSchemas = new Map([['tenant', tenantSchema]])
+
 const managerTokenVerify = async (req, res, next) => {
   try {
     let token = req.headers.authorization;
-  
+
     if (!token) {
       return res.status(403).json({ message: 'Access Denied' });
     }
@@ -16,10 +17,11 @@ const managerTokenVerify = async (req, res, next) => {
 
     const verified = jwt.verify(token, process.env.TOKEN_KEY);
 
-    // req.manager = verified.managerId;
+
 
     if (verified.role == 'manager') {
-      const manager = await getDocument({ _id: verified.managerId }, "tenant", "AppTenants", TenantSchemas)
+
+      const manager = await getCollection("AppTenants", "tenant", TenantSchemas)
 
       if (manager.isBlocked) {
         return res.status(403).json({ message: 'Manager is Blocked' });

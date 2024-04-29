@@ -77,6 +77,8 @@ const otpSendToMail = async (username, email, accountId, dbName) => {
 const sendCredentialsToEmployee = async (email, dbName) => {
   try {
     const Employee = await getCollection(dbName, 'employee', CompanySchemas)
+    let employeeId = await generateUniqueEmployeeId()
+
     function generateEmployeeId() {
       // Generate a random 5-digit number
       return `EM${Math.floor(10000 + Math.random() * 90000)}`;
@@ -90,7 +92,7 @@ const sendCredentialsToEmployee = async (email, dbName) => {
       while (!isUnique) {
         employeeId = generateEmployeeId();
         // Check if the generated ID already exists in the database
-        const existingEmployee = await Employee.findOne({ email: email })
+        const existingEmployee = await Employee.findOne({ employeeId: employeeId })
         if (!existingEmployee) {
 
           isUnique = true;
@@ -100,7 +102,6 @@ const sendCredentialsToEmployee = async (email, dbName) => {
       return employeeId;
     }
 
-    let employeeId = await generateUniqueEmployeeId()
 
 
     let mailOptions = {
@@ -136,7 +137,8 @@ const sendCredentialsToEmployee = async (email, dbName) => {
     await Employee.updateOne({ email: email }, {
       $set: {
         employeeId: employeeId,
-        employeePassword: employeeId
+        employeePassword: employeeId,
+        name : employeeId
       }
     })
 
@@ -149,7 +151,7 @@ const sendCredentialsToEmployee = async (email, dbName) => {
       }
     })
 
-    return null
+    return 
   } catch (error) {
     console.error(error.message, "this is prob")
   }

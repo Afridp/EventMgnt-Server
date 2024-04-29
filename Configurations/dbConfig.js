@@ -14,7 +14,7 @@ const mongoOptions = {
 
 function connectDB() {
   return new Promise((resolve, reject) => {
-    const mongoURL = `mongodb+srv://afrid:kottakkad@atlascluster.o8c4s.mongodb.net/`;
+    const mongoURL = process.env.MONGO_URI;
     
     mongoose
       .connect(mongoURL, mongoOptions)

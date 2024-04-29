@@ -1,11 +1,13 @@
 const cron = require('node-cron');
-const Manager = require('../Models/Manager');
 const { sendSubscriptionEndingReminder } = require('../Utils/mailSender');
+const { TenantSchemas } = require('../Utils/dbSchemas');
+const { getCollection } = require('../Utils/dbHelper');
 
-const subscriptionEndRemainderMail = () => {
+const subscriptionEndRemainderMail = async () => {
 
     cron.schedule('0 0 * * * *', async () => {
         try {
+            const Manager = await getCollection("AppTenants", "tenant", TenantSchemas)
             console.log("Running subscription mail send job...");
 
             const managersToMail = await Manager.find({

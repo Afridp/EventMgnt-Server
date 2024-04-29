@@ -1,11 +1,13 @@
 const cron = require('node-cron');
-const Manager = require('../Models/Manager'); // Adjust the path based on your project structure
+const { getCollection } = require('../Utils/dbHelper');
+const { TenantSchemas } = require('../Utils/dbSchemas');
 
 // Function to initialize and start the cron job
-const startSubscriptionUpdateJob = () => {
+const startSubscriptionUpdateJob = async () => {
     // Define a cron job to run every minute (for testing purposes)
     cron.schedule('0 0 * * * *', async () => {
         try {
+            const Manager = await getCollection("AppTenants", "tenant", TenantSchemas)
             console.log("Running subscription update job...");
 
             // Find managers with active subscriptions that have ended

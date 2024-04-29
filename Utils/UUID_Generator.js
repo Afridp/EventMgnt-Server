@@ -4,7 +4,7 @@ const { TenantSchemas, CompanySchemas } = require('./dbSchemas');
 
 
 async function generateManagerUUID() {
-    const Manager = await getCollection("AppTenants", 'tenents', TenantSchemas)
+    const Manager = await getCollection("AppTenants", 'tenant', TenantSchemas)
     let uuid;
     let isUnique = false;
     // Loop until a unique UUID is generated
