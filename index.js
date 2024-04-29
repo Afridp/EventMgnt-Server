@@ -81,4 +81,4 @@ const dynamicRouteHandler = (req, res, next) => {
 app.use(dynamicRouteHandler);
 
 // Start the server
-app.listen(5000, () => console.log('Server connected'));
+app.listen(4000, () => console.log('Server connected'));

@@ -39,7 +39,7 @@ ENV API_KEY=$API_KEY \
 ENV NODE_ENV production
 
 # Expose the port that the application listens on.
-EXPOSE 5000
+EXPOSE 4000
 
 # Run the application.
 CMD npm start
