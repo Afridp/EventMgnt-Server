@@ -35,7 +35,7 @@ const customCorsMiddleware = (req, res, next) => {
         origin = `http://${subdomain}.localhost:3000`;
     } else {
         // Default origin if subdomain is not recognized
-        origin = 'http://localhost:3000';
+        origin = 'http://35.171.16.37:4000';
     }
 
     // Allow other CORS headers
