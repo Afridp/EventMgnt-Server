@@ -36,4 +36,4 @@ jobs:
       - name: Pull image from docker hub
         run: docker pull afridp/eventbrigadge-server:latest
       - name: run Docker Container
-        run: docker run -d -p 4000:4000 --name eventserver-app-container afridp/eventbrigadge-server:latest
+        run: docker run -d -p 4000:4000 --name eventserver-app-container afridp/eventbrigadge-server
