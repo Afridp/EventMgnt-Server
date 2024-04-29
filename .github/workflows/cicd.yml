@@ -14,24 +14,24 @@ jobs:
       - name: Login to docker hub
         run: docker login -u ${{ secrets.DOCKER_USERNAME}} -p ${{ secrets.DOCKER_PASSWORD }}
       - name: Build Docker Image
-        run: docker build \
-             -t afridp/eventbrigadge-server \
-             --build-arg API_KEY=${{ secrets.API_KEY }} \
-             --build-arg API_SECRET=${{ secrets.API_SECRET }} \
-             --build-arg CLOUD_NAME=${{ secrets.CLOUD_NAME }} \
-             --build-arg DEV_SMTP_EMAIL=${{ secrets.DEV_SMTP_EMAIL }} \
-             --build-arg DEV_SMTP_PASSCODE=${{ secrets.DEV_SMTP_PASSCODE }} \
-             --build-arg MONGO_URI=${{ secrets.MONGO_URI }} \
-             --build-arg STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }} \
-             --build-arg TOKEN_KEY=${{ secrets.TOKEN_KEY }} \
-             .
+        run: |
+          docker build \
+            -t afridp/eventbrigadge-server \
+            --build-arg API_KEY="${{ secrets.API_KEY }}" \
+            --build-arg API_SECRET="${{ secrets.API_SECRET }}" \
+            --build-arg CLOUD_NAME="${{ secrets.CLOUD_NAME }}" \
+            --build-arg DEV_SMTP_EMAIL="${{ secrets.DEV_SMTP_EMAIL }}" \
+            --build-arg DEV_SMTP_PASSCODE="${{ secrets.DEV_SMTP_PASSCODE }}" \
+            --build-arg MONGO_URI="${{ secrets.MONGO_URI }}" \
+            --build-arg STRIPE_SECRET_KEY="${{ secrets.STRIPE_SECRET_KEY }}" \
+            --build-arg TOKEN_KEY="${{ secrets.TOKEN_KEY }}" \
+            .
       - name: Publish Image to docker hub
         run: docker push afridp/eventbrigadge-server:latest
-  
 
   deploy:
     needs: build
-    runs-on: self-hosted 
+    runs-on: self-hosted
     steps:
       - name: Pull image from docker hub
         run: docker pull afridp/eventbrigadge-server:latest
