@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcryptjs')
-const Customer = require('../Models/Customer')
+
 const hash = require('../Utils/bcryptPassword')
 const { otpSendToMail } = require('../Utils/mailSender')
 const Otp = require('../Models/Otp')
