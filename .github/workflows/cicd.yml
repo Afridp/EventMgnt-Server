@@ -44,13 +44,20 @@ jobs:
       
       - name: Write SSL certificate to file
         run: |
-          sudo echo "${{ secrets.CLOUDFLARE_CERT }}" | sudo base64 -d > /etc/nginx/ssl/cloudflare-cert.pem
+          sudo sh -c "echo '${{ secrets.CLOUDFLARE_CERT }}' | base64 -d > /etc/nginx/ssl/cloudflare-cert.pem"
           sudo chmod 644 /etc/nginx/ssl/cloudflare-cert.pem
       
       - name: Write SSL private key to file
         run: |
-          sudo echo "${{ secrets.CLOUDFLARE_KEY }}" | sudo base64 -d > /etc/nginx/ssl/cloudflare-key.pem
+          sudo sh -c "echo '${{ secrets.CLOUDFLARE_KEY }}' | base64 -d > /etc/nginx/ssl/cloudflare-key.pem"
           sudo chmod 600 /etc/nginx/ssl/cloudflare-key.pem
+      
+      - name: Run Docker Container
+        run: |
+          docker run -d -p 4000:4000 \
+            -v /etc/nginx/ssl:/etc/nginx/ssl \
+            --name eventserver-app-container \
+            afridp/eventbrigadge-server:latest
       
       - name: Run Docker Container
         run: |
