@@ -40,17 +40,17 @@ jobs:
         run: docker rm -f eventserver-app-container
 
       - name: Create SSL directory
-        run: mkdir -p /ssl
+        run: sudo mkdir -p /etc/nginx/ssl
       
       - name: Write SSL certificate to file
         run: |
-          echo "${{ secrets.CLOUDFLARE_CERT }}" | base64 -d > /ssl/cloudflare-cert.pem
-          chmod 644 /ssl/cloudflare-cert.pem
+          sudo echo "${{ secrets.CLOUDFLARE_CERT }}" | sudo base64 -d > /etc/nginx/ssl/cloudflare-cert.pem
+          sudo chmod 644 /etc/nginx/ssl/cloudflare-cert.pem
       
       - name: Write SSL private key to file
         run: |
-          echo "${{ secrets.CLOUDFLARE_KEY }}" | base64 -d > /ssl/cloudflare-key.pem
-          chmod 600 /ssl/cloudflare-key.pem
+          sudo echo "${{ secrets.CLOUDFLARE_KEY }}" | sudo base64 -d > /etc/nginx/ssl/cloudflare-key.pem
+          sudo chmod 600 /etc/nginx/ssl/cloudflare-key.pem
       
       - name: Run Docker Container
         run: |
