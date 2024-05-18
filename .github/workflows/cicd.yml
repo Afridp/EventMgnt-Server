@@ -39,14 +39,25 @@ jobs:
       - name: Delete old running container
         run: docker rm -f eventserver-app-container
 
+      - name: Create SSL directory
+        run: mkdir -p /ssl
+      
       - name: Write SSL certificate to file
         run: |
-          mkdir -p /etc/nginx/ssl
-          echo "${{ secrets.CLOUDFLARE_CERT }}" | base64 -d > /etc/nginx/ssl/cloudflare-cert.pem
-
+          echo "${{ secrets.CLOUDFLARE_CERT }}" | base64 -d > /ssl/cloudflare-cert.pem
+          chmod 644 /ssl/cloudflare-cert.pem
+      
       - name: Write SSL private key to file
         run: |
-          echo "${{ secrets.CLOUDFLARE_KEY }}" | base64 -d > /etc/nginx/ssl/cloudflare-key.pem
+          echo "${{ secrets.CLOUDFLARE_KEY }}" | base64 -d > /ssl/cloudflare-key.pem
+          chmod 600 /ssl/cloudflare-key.pem
+      
+      - name: Run Docker Container
+        run: |
+          docker run -d -p 4000:4000 \
+            -v /ssl:/etc/nginx/ssl \
+            --name eventserver-app-container \
+            afridp/eventbrigadge-server:latest
 
       - name: Run Docker Container
         run: |
