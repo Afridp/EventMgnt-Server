@@ -35,7 +35,33 @@ jobs:
     steps:
       - name: Pull image from docker hub
         run: docker pull afridp/eventbrigadge-server:latest
-      - name: Delete old runnig container
-        run: docker rm -f eventserver-app-container 
-      - name: run Docker Container
-        run: docker run -d -p 4000:4000 --name eventserver-app-container afridp/eventbrigadge-server:latest
+
+      - name: Delete old running container
+        run: docker rm -f eventserver-app-container
+
+      - name: Write SSL certificate to file
+        run: |
+          mkdir -p /etc/nginx/ssl
+          echo "${{ secrets.CLOUDFLARE_CERT }}" | base64 -d > /etc/nginx/ssl/cloudflare-cert.pem
+
+      - name: Write SSL private key to file
+        run: |
+          echo "${{ secrets.CLOUDFLARE_KEY }}" | base64 -d > /etc/nginx/ssl/cloudflare-key.pem
+
+      - name: Run Docker Container
+        run: |
+          docker run -d -p 4000:4000 \
+            -v /etc/nginx/ssl:/etc/nginx/ssl \
+            --name eventserver-app-container \
+            afridp/eventbrigadge-server:latest
+
+  # deploy:
+  #   needs: build
+  #   runs-on: self-hosted
+  #   steps:
+  #     - name: Pull image from docker hub
+  #       run: docker pull afridp/eventbrigadge-server:latest
+  #     - name: Delete old runnig container
+  #       run: docker rm -f eventserver-app-container
+  #     - name: run Docker Container
+  #       run: docker run -d -p 4000:4000 --name eventserver-app-container afridp/eventbrigadge-server:latest

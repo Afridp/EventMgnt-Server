@@ -15,6 +15,7 @@ const { TenantSchemas, CompanySchemas } = require('../Utils/dbSchemas');
 // tenent signup
 const managerSignup = async (req, res) => {
     try {
+        console.log("haaai");
         const { signupData } = req.body
         const Manager = await getCollection('AppTenants','tenant', TenantSchemas)
 
