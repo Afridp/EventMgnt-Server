@@ -7,6 +7,7 @@ const customerRoute = require('./Routes/customerRoutes')
 const employeeRoute = require('./Routes/employeeRoutes');
 const { startSubscriptionUpdateJob } = require('./Jobs/subscriptionUpdater');
 const { subscriptionEndRemainderMail } = require('./Jobs/subscriptionEndMailRemainder');
+const ENV = process.env.NODE_ENV
 
 require('dotenv').config();
 // config of dotenv to access env file data
@@ -32,10 +33,10 @@ const customCorsMiddleware = (req, res, next) => {
     // Set the appropriate origin based on the subdomain
     let origin;
     if (subdomain === 'manager' || subdomain === 'customer' || subdomain === 'employee') {
-        origin = `http://${subdomain}.localhost:3000`;
+        origin = ENV == "development" ? `http://${subdomain}.localhost:3000` : `https://${subdomain}.brigadge.online`;
     } else {
         // Default origin if subdomain is not recognized
-        origin = 'http://localhost:3000';
+        origin = ENV == "development" ? `https://${subdomain}.localhost:3000` : 'https://brigadge.online';
     }
 
     // Allow other CORS headers
