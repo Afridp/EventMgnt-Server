@@ -23,7 +23,7 @@ RUN npm install
 
 # Copy the rest of the source files into the image
 COPY . .
-RUN npm run build
+# RUN npm run build
 
 # Production image
 FROM nginx:stable-alpine
@@ -32,7 +32,7 @@ FROM nginx:stable-alpine
 COPY --from=build /usr/src/app/build /usr/share/nginx/html
 
 # Copy the Nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/nginx.conf
 
 # Redefine build arguments to make them available for the next stages
 ARG API_KEY
