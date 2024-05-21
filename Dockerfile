@@ -29,7 +29,7 @@ COPY . .
 FROM nginx:stable-alpine
 
 # Copy the built application from the previous stage
-COPY --from=build /usr/src/app/build /usr/share/nginx/html
+COPY --from=build /usr/src/app /usr/share/nginx/html
 
 # Copy the Nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
