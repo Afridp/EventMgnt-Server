@@ -13,7 +13,7 @@ ARG TOKEN_KEY
 
 
 # Base image
-FROM node:${NODE_VERSION}-alpine
+FROM node:${NODE_VERSION}-alpine as build
 
 WORKDIR /usr/src/app/
 
@@ -23,6 +23,16 @@ RUN npm install
 
 # Copy the rest of the source files into the image
 COPY . .
+RUN npm run build
+
+# Production image
+FROM nginx:stable-alpine
+
+# Copy the built application from the previous stage
+COPY --from=build /usr/src/app/build /usr/share/nginx/html
+
+# Copy the Nginx configuration
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Redefine build arguments to make them available for the next stages
 ARG API_KEY
@@ -50,7 +60,7 @@ ENV API_KEY=$API_KEY \
 ENV NODE_ENV production
 
 # Expose the port that the application listens on
-EXPOSE 4000
+EXPOSE 80 443
 
-# Run the application
-CMD ["npm", "start"]
+# Start Nginx
+CMD ["nginx", "-g", "daemon off;"]

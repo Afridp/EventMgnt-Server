@@ -11,8 +11,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4.1.4
+
       - name: Login to docker hub
         run: docker login -u ${{ secrets.DOCKER_USERNAME}} -p ${{ secrets.DOCKER_PASSWORD }}
+
       - name: Build Docker Image
         run: |
           docker build \
@@ -26,6 +28,7 @@ jobs:
             --build-arg STRIPE_SECRET_KEY="${{ secrets.STRIPE_SECRET_KEY }}" \
             --build-arg TOKEN_KEY="${{ secrets.TOKEN_KEY }}" \
             .
+
       - name: Publish Image to docker hub
         run: docker push afridp/eventbrigadge-server:latest
 
@@ -35,10 +38,30 @@ jobs:
     steps:
       - name: Pull image from docker hub
         run: docker pull afridp/eventbrigadge-server:latest
+
+      - name: Ensure SSL certificates directory exists
+        run: mkdir -p ~/ssl-certs
+
+      - name: Deploy SSL certificate
+        run: echo "${{ secrets.CLOUDFLARE_CERT }}" > ~/ssl-certs/cloudflare-cert.pem
+
+      - name: Deploy SSL key
+        run: echo "${{ secrets.CLOUDFLARE_KEY }}" > ~/ssl-certs/cloudflare-key.pem
+
       - name: Delete old runnig container
         run: docker rm -f eventserver-app-container
+
       - name: run Docker Container
-        run: docker run -d -p 4000:4000 --name eventserver-app-container afridp/eventbrigadge-server:latest
+        run: |
+          docker run -d \
+          -p 80:80 \
+          -p 443:443 \
+          --name eventserver-app-container \
+          -v ~/ssl-certs/cloudflare-cert.pem:/etc/nginx/ssl/cloudflare-cert.pem \
+          -v ~/ssl-certs/cloudflare-key.pem:/etc/nginx/ssl/cloudflare-key.pem \
+          afridp/eventbrigadge-server:latest
+
+        
   # deploy:
   #   needs: build
   #   runs-on: self-hosted
