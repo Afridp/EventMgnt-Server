@@ -15,15 +15,14 @@ ARG TOKEN_KEY
 # Base image
 FROM node:${NODE_VERSION}-alpine as build
 
-WORKDIR /usr/src/app/
-
+WORKDIR /app
 # Copy package.json and install dependencies
 COPY package.json ./
 RUN npm install
 
 # Copy the rest of the source files into the image
 COPY . .
-# RUN npm run build
+RUN npm run build
 
 # Production image
 FROM nginx:stable-alpine
