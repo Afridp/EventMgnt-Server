@@ -33,10 +33,10 @@ const customCorsMiddleware = (req, res, next) => {
     // Set the appropriate origin based on the subdomain
     let origin;
     if (subdomain === 'manager' || subdomain === 'customer' || subdomain === 'employee') {
-        origin = ENV == "development" ? `https://${subdomain}.localhost:3000` : `https://${subdomain}.brigadge.online`;
+        origin = ENV == "development" ? `https://${subdomain}.backend.localhost:3000` : `https://${subdomain}.backend.brigadge.online`;
     } else {
         // Default origin if subdomain is not recognized
-        origin = ENV == "development" ? `https://localhost:3000` : 'https://brigadge.online';
+        origin = ENV == "development" ? `https://backend.localhost:3000` : 'https://backend.brigadge.online';
     }
 
     // Allow other CORS headers
