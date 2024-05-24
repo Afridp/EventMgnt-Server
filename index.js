@@ -8,7 +8,7 @@ const employeeRoute = require('./Routes/employeeRoutes');
 const { startSubscriptionUpdateJob } = require('./Jobs/subscriptionUpdater');
 const { subscriptionEndRemainderMail } = require('./Jobs/subscriptionEndMailRemainder');
 const ENV = process.env.NODE_ENV
-
+console.log("aaai");
 require('dotenv').config();
 // config of dotenv to access env file data
 
@@ -25,6 +25,7 @@ app.use(express.urlencoded({ extended: true, limit: '5mb' }))
 // middleware for parsing the URL encoded data,(html forms datas)
 
 // Custom CORS middleware to dynamically set the origin based on the request
+console.log(ENV,"not logging");
 const customCorsMiddleware = (req, res, next) => {
     // Extract the subdomain from the request hostname
     const subdomain = req.hostname.split('.')[0];
@@ -33,7 +34,6 @@ const customCorsMiddleware = (req, res, next) => {
     // Set the appropriate origin based on the subdomain
     let origin;
     if (subdomain === 'manager' || subdomain === 'customer' || subdomain === 'employee') {
-        console.log(ENV);
         origin = ENV == "development" ? `https://${subdomain}.backend.localhost:3000` : `https://${subdomain}.backend.brigadge.online`;
     } else {
         // Default origin if subdomain is not recognized
