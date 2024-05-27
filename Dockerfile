@@ -22,16 +22,16 @@ RUN npm install
 
 # Copy the rest of the source files into the image
 COPY . .
-RUN npm run build
+# RUN npm run build
 
 # Production image
-FROM nginx:stable-alpine
+# FROM nginx:stable-alpine
 
 # Copy the built application from the previous stage
-COPY --from=build /app/dist /usr/share/nginx/html
+# COPY --from=build /app/dist /usr/share/nginx/html
 
 # Copy the Nginx configuration
-COPY nginx.conf /etc/nginx/nginx.conf
+# COPY nginx.conf /etc/nginx/nginx.conf
 
 # Redefine build arguments to make them available for the next stages
 ARG API_KEY
@@ -59,8 +59,9 @@ ENV API_KEY=$API_KEY \
 ENV NODE_ENV production
 
 # Expose the port that the application listens on
-EXPOSE 80
-EXPOSE 443
+# EXPOSE 80
+EXPOSE 4000
 
 # Start Nginx
-CMD ["nginx", "-g", "daemon off;"]
+# CMD ["nginx", "-g", "daemon off;"]
+CMD ["node", "index.js"]

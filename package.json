@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "node build.js",
-    "start": "node index.js",
+    "start": "nodemon index.js",
     "dev": "nodemon index.js"
   },
   "keywords": [],
@@ -25,11 +25,5 @@
     "nodemon": "^3.0.2",
     "otp-generator": "^4.0.1",
     "stripe": "^14.19.0"
-  },
-  "devDependencies": {
-    "@babel/cli": "^7.24.5",
-    "@babel/core": "^7.24.5",
-    "@babel/preset-env": "^7.24.5",
-    "ncp": "^2.0.0"
   }
 }
