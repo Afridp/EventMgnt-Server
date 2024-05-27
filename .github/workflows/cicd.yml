@@ -48,8 +48,8 @@ jobs:
       # - name: Deploy SSL key
       #   run: echo "${{ secrets.CLOUDFLARE_KEY }}" > ~/ssl-certs/cloudflare-key.pem
 
-      # - name: Delete old runnig container
-      #   run: docker rm -f eventserver-app-container
+      - name: Delete old runnig container
+        run: docker rm -f eventserver-app-container
 
       - name: run Docker Container
         run: |
