@@ -77,9 +77,9 @@ const dynamicRouteHandler = (req, res, next) => {
             console.log("hai from backend");
             return managerRoute(req, res, next)
         default:
-            return managerRoute(req, res, next)
+            // return managerRoute(req, res, next)
             // Handle default case if subdomain is not recognized
-            // res.status(404).send('Not Fouasdfnsdfd');
+            res.status(404).send('Not Fouasdfnsdfd');
     }
 };
 
