@@ -11,7 +11,13 @@ const { switchDB, getDBModel, getDocument, getDocuments, getDocumentWithPopulate
 const Otp = require('../Models/Otp');
 const { TenantSchemas, CompanySchemas } = require('../Utils/dbSchemas');
 
-
+const defaults = async(req,res) => {
+    try {
+        res.send("u have seccessfully accecced the manager route or to the backend route")
+    } catch (error) {
+        console.log(error.message)
+    }
+}
 // tenent signup
 const managerSignup = async (req, res) => {
     try {
@@ -893,5 +899,6 @@ module.exports = {
     approveEvent,
     fileUploads,
     customizedAppearance,
-    customizedContents
+    customizedContents,
+    defaults
 }

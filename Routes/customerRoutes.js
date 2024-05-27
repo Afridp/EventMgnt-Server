@@ -2,7 +2,10 @@ const express = require('express')
 const customerRoute = express()
 
 const { customerSignin, customerSignup, otpVerification, resendOtp, getEvents, submitEvent, findCustomer, getBookings, getSeeMoreEventData, editBooked, updateProfilePic, updateProfile, changePassword, getEventFormField, paymentCheckout, topupWallet, getWallet, addBalance, cancelBooked } = require('../Controllers/customer')
-
+customerRoute.get('/',(req,res)=>{
+    res.send("u have successfully reached in customer route")
+    return
+})
 customerRoute.post('/:mid/signup', customerSignup)//
 customerRoute.post('/:mid/otpVerification', otpVerification)//
 customerRoute.post('/resendOtp/:customerId', resendOtp)
