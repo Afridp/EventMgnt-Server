@@ -54,8 +54,7 @@ jobs:
       - name: run Docker Container
         run: |
           docker run -d \
-          -p 80:80 \
-          -p 443:443 \
+          -p 4000:4000 \
           --name eventserver-app-container \
           -v ~/ssl-certs/cloudflare-cert.pem:/etc/nginx/ssl/cloudflare-cert.pem \
           -v ~/ssl-certs/cloudflare-key.pem:/etc/nginx/ssl/cloudflare-key.pem \

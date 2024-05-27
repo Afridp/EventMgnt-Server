@@ -78,7 +78,7 @@ const dynamicRouteHandler = (req, res, next) => {
             return managerRoute(req, res, next)
         default:
             // Handle default case if subdomain is not recognized
-            // res.status(404).send('Not Fouasdfnsdfd');
+            res.status(404).send('Not Fouasdfnsdfd');
     }
 };
 
