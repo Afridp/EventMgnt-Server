@@ -60,15 +60,15 @@ const dynamicRouteHandler = (req, res, next) => {
 
     // Dynamically redirect requests based on the subdomain
     switch (subdomain) {
-        case 'manager':
+        case 'managerbackend':
 
             return managerRoute(req, res, next);
 
-        case 'customer':
+        case 'customermanager':
             console.log("haai from customer ");
             return customerRoute(req, res, next);
 
-        case 'employee':
+        case 'employeebackend':
 
             return employeeRoute(req, res, next);
             
