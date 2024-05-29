@@ -74,7 +74,7 @@ const dynamicRouteHandler = (req, res, next) => {
             
         case 'backend':
             // TODO: when deploying
-            console.log("hai from backend");
+            console.log("hai fr backend");
             return managerRoute(req, res, next)
         default:
             // return managerRoute(req, res, next)
@@ -88,3 +88,4 @@ app.use(dynamicRouteHandler);
 
 // Start the server
 app.listen(4000, () => console.log('Server connected'));
+  
