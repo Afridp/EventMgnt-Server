@@ -64,7 +64,7 @@ const dynamicRouteHandler = (req, res, next) => {
 
             return managerRoute(req, res, next);
 
-        case 'customermanager':
+        case 'customerbackend':
             console.log("haai from customer ");
             return customerRoute(req, res, next);
 
