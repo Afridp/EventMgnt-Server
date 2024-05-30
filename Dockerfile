@@ -76,7 +76,7 @@ FROM node:18.17.0-alpine
 RUN apk add --no-cache nginx
 
 # Copy the built application from the previous stage
-COPY --from=build /app /app
+COPY --from=0 /app /app
 
 # Copy the Nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
