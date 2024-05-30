@@ -25,7 +25,7 @@ COPY . .
 # RUN npm run build
 
 # Production image
-# FROM nginx:stable-alpine
+FROM nginx:stable-alpine
 
 # Copy the built application from the previous stage
 # COPY --from=build /app/dist /usr/share/nginx/html
