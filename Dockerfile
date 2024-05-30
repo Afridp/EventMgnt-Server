@@ -69,19 +69,8 @@
 
 
 
-# Production image
-FROM node:18.17.0-alpine
-
-# Install Nginx if needed
-RUN apk add --no-cache nginx
-
-# Copy the built application from the previous stage
-COPY --from=build / /
-
-# Copy the Nginx configuration
-COPY nginx.conf /etc/nginx/nginx.conf
-
-# Redefine build arguments to make them available for the next stages
+# Define build arguments
+ARG NODE_VERSION=18.17.0
 ARG API_KEY
 ARG API_SECRET
 ARG CLOUD_NAME
@@ -90,6 +79,30 @@ ARG DEV_SMTP_PASSCODE
 ARG MONGO_URI
 ARG STRIPE_SECRET_KEY
 ARG TOKEN_KEY
+
+# Base image for the build stage
+FROM node:${NODE_VERSION}-alpine as builder
+
+WORKDIR /app
+
+# Copy package.json and install dependencies
+COPY package.json ./
+RUN npm install
+
+# Copy the rest of the source files into the image
+COPY . .
+
+# Production image
+FROM node:${NODE_VERSION}-alpine
+
+# Install Nginx if needed
+RUN apk add --no-cache nginx
+
+# Copy the built application from the previous stage
+COPY --from=builder /app /app
+
+# Copy the Nginx configuration
+COPY nginx.conf /etc/nginx/nginx.conf
 
 # Set environment variables
 ENV API_KEY=$API_KEY \
