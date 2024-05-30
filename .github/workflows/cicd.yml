@@ -39,14 +39,14 @@ jobs:
       - name: Pull image from docker hub
         run: docker pull afridp/eventbrigadge-server:latest
 
-      # - name: Ensure SSL certificates directory exists
-      #   run: mkdir -p ~/ssl-certs
+      - name: Ensure SSL certificates directory exists
+        run: mkdir -p ~/ssl-certs
 
-      # - name: Deploy SSL certificate
-      #   run: echo "${{ secrets.CLOUDFLARE_CERT }}" > ~/ssl-certs/cloudflare-cert.pem
+      - name: Deploy SSL certificate
+        run: echo "${{ secrets.CLOUDFLARE_CERT }}" > ~/ssl-certs/cloudflare-cert.pem
 
-      # - name: Deploy SSL key
-      #   run: echo "${{ secrets.CLOUDFLARE_KEY }}" > ~/ssl-certs/cloudflare-key.pem
+      - name: Deploy SSL key
+        run: echo "${{ secrets.CLOUDFLARE_KEY }}" > ~/ssl-certs/cloudflare-key.pem
 
       - name: Delete old runnig container
         run: docker rm -f eventserver-app-container
@@ -55,10 +55,11 @@ jobs:
         run: |
           docker ps -aq -f name=eventserver-app-container | xargs -r docker rm -f
 
-      - name: run Docker Container
+      - name: Run Docker Container
         run: |
           docker run -d \
-          -p 4000:4000 \
+          -p 80:80 \
+          -p 443:443 \
           --init \
           --name eventserver-app-container \
           afridp/eventbrigadge-server:latest
