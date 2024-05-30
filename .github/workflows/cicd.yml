@@ -60,7 +60,8 @@ jobs:
           docker run -d \
           -p 80:80 \
           -p 443:443 \
-          --init \
+          -v ~/ssl-certs/cloudflare-cert.pem:/etc/nginx/ssl/cloudflare-cert.pem \
+          -v ~/ssl-certs/cloudflare-key.pem:/etc/nginx/ssl/cloudflare-key.pem \
           --name eventserver-app-container \
           afridp/eventbrigadge-server:latest
 
