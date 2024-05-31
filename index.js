@@ -85,7 +85,7 @@ const dynamicRouteHandler = (req, res, next) => {
 
 // Apply the dynamic route handler middleware to all routes
 app.use(dynamicRouteHandler);
-
+  
 // Start the server
 app.listen(4000, () => console.log('Server connected'));
   
