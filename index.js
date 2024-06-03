@@ -70,6 +70,8 @@ const dynamicRouteHandler = (req, res, next) => {
             // TODO: when deploying
            
             return managerRoute(req, res, next)
+        case 'localhost':
+            return managerRoute(req, res, next)
         default:
             // return managerRoute(req, res, next)
             // Handle default case if subdomain is not recognized
