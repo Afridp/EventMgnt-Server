@@ -49,7 +49,7 @@ jobs:
         run: echo "${{ secrets.CLOUDFLARE_KEY }}" > ~/ssl-certs/cloudflare-key.pem
 
       - name: Delete old runnig container
-        run: docker rm -f eventserver-app-container
+        run: docker rm -f eventserver-app-container || ture
 
       - name: Ensure old container is removed
         run: |
@@ -60,9 +60,9 @@ jobs:
           docker run -d \
           -p 80:80 \
           -p 443:443 \
+          --name eventserver-app-container \
           -v ~/ssl-certs/cloudflare-cert.pem:/etc/nginx/ssl/cloudflare-cert.pem \
           -v ~/ssl-certs/cloudflare-key.pem:/etc/nginx/ssl/cloudflare-key.pem \
-          --name eventserver-app-container \
           afridp/eventbrigadge-server:latest
 
 
