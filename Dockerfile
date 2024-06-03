@@ -104,6 +104,16 @@ COPY --from=builder /app /app
 # Copy the Nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
 
+ARG NODE_VERSION=18.17.0
+ARG API_KEY
+ARG API_SECRET
+ARG CLOUD_NAME
+ARG DEV_SMTP_EMAIL
+ARG DEV_SMTP_PASSCODE
+ARG MONGO_URI
+ARG STRIPE_SECRET_KEY
+ARG TOKEN_KEY
+
 # Set environment variables
 ENV API_KEY=$API_KEY \
     API_SECRET=$API_SECRET \
