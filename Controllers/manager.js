@@ -2,14 +2,16 @@ const jwt = require('jsonwebtoken')
 const bcrypt = require('bcryptjs')
 const cloudinary = require('../Utils/cloudinary');
 const hash = require('../Utils/bcryptPassword')
+const Otp = require('../Models/Otp');
 
 const { default: Stripe } = require('stripe');
 const { generateManagerUUID, generateEventUUID } = require('../Utils/UUID_Generator');
 const { otpSendToMail, sendCredentialsToEmployee } = require('../Utils/mailSender')
 const { switchDB, getDBModel, getDocument, getDocuments, getDocumentWithPopulate, deleteDocument, getCollection } = require('../Utils/dbHelper');
 
-const Otp = require('../Models/Otp');
 const { TenantSchemas, CompanySchemas } = require('../Utils/dbSchemas');
+
+const API =  process.env.API_source
 
 const defaults = async(req,res) => {
     try {
@@ -21,7 +23,7 @@ const defaults = async(req,res) => {
 // tenent signup
 const managerSignup = async (req, res) => {
     try {
-        console.log("haaai");
+     
         const { signupData } = req.body
         const Manager = await getCollection('AppTenants','tenant', TenantSchemas)
 
@@ -38,7 +40,7 @@ const managerSignup = async (req, res) => {
         } else {
             const spassword = await hash.hashPassword(signupData.password)
             const uuid = await generateManagerUUID();
-            const customerLink = `http://customer.localhost:3000/${uuid}`
+            const customerLink = `http://customer.${API}/${uuid}`
 
             const newManagr = new Manager({
                 uuid: uuid,
@@ -90,8 +92,8 @@ const otpVerification = async (req, res) => {
 
             // const event = await Event.findById(eventId)
             // TODO: change the urls according to manager url when manager sharded
-            let success_url = `http://localhost:3000/?managerId=${managerId}&amount=${amount}&scheme=${scheme}`;
-            let cancel_url = `http://localhost:3000/dashboard`
+            let success_url = `http://${API}/?managerId=${managerId}&amount=${amount}&scheme=${scheme}`;
+            let cancel_url = `http://${API}/dashboard`
             const lineItems = [{
                 price_data: {
                     currency: "inr",

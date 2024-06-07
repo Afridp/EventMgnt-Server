@@ -27,6 +27,7 @@ jobs:
             --build-arg MONGO_URI="${{ secrets.MONGO_URI }}" \
             --build-arg STRIPE_SECRET_KEY="${{ secrets.STRIPE_SECRET_KEY }}" \
             --build-arg TOKEN_KEY="${{ secrets.TOKEN_KEY }}" \
+            --build-arg API_SOURCE="${{ secrets.API_SOURCE }}" \
             .
 
       - name: Publish Image to docker hub
