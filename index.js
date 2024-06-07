@@ -68,7 +68,6 @@ const dynamicRouteHandler = (req, res, next) => {
             return employeeRoute(req, res, next);
         case 'backend':
             // TODO: when deploying
-           
             return managerRoute(req, res, next)
         case 'localhost':
             return managerRoute(req, res, next)

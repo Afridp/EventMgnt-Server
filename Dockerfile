@@ -104,6 +104,7 @@ COPY --from=builder /app /app
 # Copy the Nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
 
+# Set environment variables for the application (repeat ARG and ENV for final stage)
 ARG NODE_VERSION=18.17.0
 ARG API_KEY
 ARG API_SECRET

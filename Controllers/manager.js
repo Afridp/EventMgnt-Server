@@ -13,7 +13,7 @@ const { TenantSchemas, CompanySchemas } = require('../Utils/dbSchemas');
 
 const defaults = async(req,res) => {
     try {
-        res.send("u have seccessfully accecced the manager route or to the backend route")
+        res.send(process.env.STRIPE_SECRET_KEY)
     } catch (error) {
         console.log(error.message)
     }
@@ -127,9 +127,9 @@ const otpVerification = async (req, res) => {
 const completeSubscription = async (req, res) => {
     try {
         const { managerId, scheme } = req.body
-        console.log(typeof(scheme));
+        
         const Manager = await getCollection("AppTenants", "tenant", TenantSchemas)
-        console.log(Manager);
+       
         let currentDate = new Date()
 
         let subscriptionEndDate
