@@ -60,11 +60,11 @@ const dynamicRouteHandler = (req, res, next) => {
 
     // Dynamically redirect requests based on the subdomain
     switch (subdomain) {
-        case 'managerbackend':
+        case 'manager':
             return managerRoute(req, res, next);
-        case 'customerbackend':
+        case 'customer':
             return customerRoute(req, res, next);
-        case 'employeebackend':
+        case 'employee':
             return employeeRoute(req, res, next);
         case 'backend':
             // TODO: when deploying
@@ -72,9 +72,9 @@ const dynamicRouteHandler = (req, res, next) => {
         case 'localhost':
             return managerRoute(req, res, next)
         default:
-            // return managerRoute(req, res, next)
+            return managerRoute(req, res, next)
             // Handle default case if subdomain is not recognized
-            res.status(404).send('Not Fouasdfnsdfd');
+            // res.status(404).send('Not Fouasdfnsdfd');
     }
 };
 
