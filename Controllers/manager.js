@@ -10,7 +10,7 @@ const { otpSendToMail, sendCredentialsToEmployee } = require('../Utils/mailSende
 const { switchDB, getDBModel, getDocument, getDocuments, getDocumentWithPopulate, deleteDocument, getCollection } = require('../Utils/dbHelper');
 
 const { TenantSchemas, CompanySchemas } = require('../Utils/dbSchemas');
-
+require('dotenv').config();
 const API =  process.env.API_REQUEST_SOURCE
 
 const defaults = async(req,res) => {
