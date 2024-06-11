@@ -80,7 +80,7 @@ const otpVerification = async (req, res) => {
         const correctOtp = isOtp.otp
 
         const { expiresAt } = isOtp
-
+        console.log(API,"this is API what i took from env");
         if (correctOtp && expiresAt < Date.now()) {
             return res.status(403).json({ message: "Otp is expired" })
         }
@@ -92,8 +92,8 @@ const otpVerification = async (req, res) => {
 
             // const event = await Event.findById(eventId)
             // TODO: change the urls according to manager url when manager sharded
-            let success_url = `http://${API}/?managerId=${managerId}&amount=${amount}&scheme=${scheme}`;
-            let cancel_url = `http://${API}/dashboard`
+            let success_url = `https://${API}/?managerId=${managerId}&amount=${amount}&scheme=${scheme}`;
+            let cancel_url = `https://${API}/dashboard`
             const lineItems = [{
                 price_data: {
                     currency: "inr",
