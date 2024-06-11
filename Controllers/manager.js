@@ -11,7 +11,7 @@ const { switchDB, getDBModel, getDocument, getDocuments, getDocumentWithPopulate
 
 const { TenantSchemas, CompanySchemas } = require('../Utils/dbSchemas');
 
-const API =  process.env.API_source
+const API =  process.env.API_REQUEST_SOURCE
 
 const defaults = async(req,res) => {
     try {
