@@ -59,6 +59,7 @@ jobs:
       - name: Run Docker Container
         run: |
           docker run -d \
+          --init \
           -p 80:80 \
           -p 443:443 \
           --name eventserver-app-container \
