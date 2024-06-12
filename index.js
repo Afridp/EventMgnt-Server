@@ -30,7 +30,6 @@ const customCorsMiddleware = (req, res, next) => {
     
     const subdomain = req.hostname.split('.')[0];
    
-
     // Check if the subdomain is 'manager', 'customer', or 'employee'
     // Set the appropriate origin based on the subdomain
     let origin;
@@ -41,7 +40,7 @@ const customCorsMiddleware = (req, res, next) => {
         // Default origin if subdomain is not recognized
         origin = ENV == "development" ? `http://localhost:3000` : 'https://brigadge.online';
     }
-
+console.log(origin);
     // Allow other CORS headers
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE');

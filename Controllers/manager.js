@@ -210,6 +210,7 @@ const resendOtp = async (req, res) => {
 // tenant signing in
 const managerSignin = async (req, res) => {
     try {
+        console.log("jhasdkf");
         const { signinDetails, password } = req.body
         const Manager = await getCollection("AppTenants", 'tenant', TenantSchemas)
 
