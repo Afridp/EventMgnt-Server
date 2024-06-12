@@ -27,20 +27,21 @@ app.use(express.urlencoded({ extended: true, limit: '5mb' }))
 // Custom CORS middleware to dynamically set the origin based on the request
 const customCorsMiddleware = (req, res, next) => {
     // Extract the subdomain from the request hostname
-    
+
     const subdomain = req.hostname.split('.')[0];
-   
+
     // Check if the subdomain is 'manager', 'customer', or 'employee'
     // Set the appropriate origin based on the subdomain
+    console.log(subdomain,"this is subdomain");
     let origin;
-    if (subdomain === 'manager' || subdomain === 'customer' || subdomain === 'employee') {
+    if (subdomain === 'manager' || subdomain === 'customer' || subdomain === 'employee' || subdomain === 'managerbackend' || subdomain === 'employeebackend' || subdomain === 'customerbackend' || subdomain === 'backend') {
         origin = ENV == "development" ? `http://${subdomain}.localhost:3000` : `https://${subdomain}.brigadge.online`;
-        
+
     } else {
         // Default origin if subdomain is not recognized
         origin = ENV == "development" ? `http://localhost:3000` : 'https://brigadge.online';
     }
-console.log(origin);
+    console.log(origin,"this is orgin");
     // Allow other CORS headers
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE');
@@ -72,14 +73,13 @@ const dynamicRouteHandler = (req, res, next) => {
             return managerRoute(req, res, next)
         default:
             return managerRoute(req, res, next)
-            // Handle default case if subdomain is not recognized
-            // res.status(404).send('Not Fouasdfnsdfd');
+        // Handle default case if subdomain is not recognized
+        // res.status(404).send('Not Fouasdfnsdfd');
     }
 };
 
 // Apply the dynamic route handler middleware to all routes
 app.use(dynamicRouteHandler);
-  
+
 // Start the server
 app.listen(4000, () => console.log('Server connected'));
-  
