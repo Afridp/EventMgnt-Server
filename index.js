@@ -27,26 +27,35 @@ app.use(express.urlencoded({ extended: true, limit: '5mb' }))
 // Custom CORS middleware to dynamically set the origin based on the request
 const customCorsMiddleware = (req, res, next) => {
     // Extract the subdomain from the request hostname
-    console.log(req,"this is req");
-    
-    const subdomain = req.hostname.split('.')[0];
+    const requestOrigin = req.headers.orgin
+    // const subdomain = req.headers.split('.')[0];
 
     // Check if the subdomain is 'manager', 'customer', or 'employee'
-    console.log(subdomain,"this is subdomain");
+    console.log(subdomain, "this is subdomain");
     // Set the appropriate origin based on the subdomain
-    console.log(req.hostname,"this is hostname");
-    console.log(ENV,'this is env');
-    let origin;
-    if (subdomain === 'manager' || subdomain === 'customer' || subdomain === 'employee' || subdomain === 'managerbackend' || subdomain === 'employeebackend' || subdomain === 'customerbackend' || subdomain === 'backend') {
-        origin = ENV === "development" ? `http://${subdomain}.localhost:3000` : `https://${subdomain}.brigadge.online`;
+    console.log(req.hostname, "this is hostname");
+    console.log(ENV, 'this is env');
 
+    // If the request origin is trusted (e.g., your client-side application domains/subdomains)
+    if (isTrustedOrigin(requestOrigin)) {
+        // Set the Access-Control-Allow-Origin header with the request origin
+        res.setHeader('Access-Control-Allow-Origin', requestOrigin);
     } else {
-        // Default origin if subdomain is not recognized
-        origin = ENV === "development" ? `http://localhost:3000` : 'https://brigadge.online';
+        // If the origin is not trusted, you can either:
+        // 1. Deny the request by not setting the Access-Control-Allow-Origin header
+        // 2. Set a default origin (e.g., your website domain)
+        res.setHeader('Access-Control-Allow-Origin', 'https://your-website.com');
     }
-    console.log(origin,"this is orgin");
+    // if (subdomain === 'manager' || subdomain === 'customer' || subdomain === 'employee' || subdomain === 'managerbackend' || subdomain === 'employeebackend' || subdomain === 'customerbackend' || subdomain === 'backend') {
+    //     origin = ENV === "development" ? `http://${subdomain}.localhost:3000` : `https://${subdomain}.brigadge.online`;
+
+    // } else {
+    //     // Default origin if subdomain is not recognized
+    //     origin = ENV === "development" ? `http://localhost:3000` : 'https://brigadge.online';
+    // }
+
     // Allow other CORS headers
-    res.setHeader('Access-Control-Allow-Origin', origin);
+
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, role');
 
@@ -54,30 +63,83 @@ const customCorsMiddleware = (req, res, next) => {
     next();
 };
 
+// Helper function to check if the origin is trusted
+const isTrustedOrigin = (origin) => {
+    // List of trusted origins (e.g., your client-side application domains/subdomains)
+    const trustedOrigins = [
+        'https://manager.brigadge.online',
+        'https://customer.brigadge.online',
+        'https://employee.brigadge.online',
+        'https://brigadge.online',
+        'http://employee.localhost:3000',
+        'http://manager.localhost:3000',
+        'http://customer.localhost:3000',
+        'http://localhost:3000'
+        // Add more trusted origins as needed
+    ];
+
+    // Check if the origin is in the list of trusted origins
+    return trustedOrigins.includes(origin);
+};
+
 // Apply the custom CORS middleware to all routes
 app.use(customCorsMiddleware);
 
-// Define middleware to handle dynamic route redirection based on subdomain
-const dynamicRouteHandler = (req, res, next) => {
-    const subdomain = req.hostname.split('.')[0];
+// // Define middleware to handle dynamic route redirection based on subdomain
+// const dynamicRouteHandler = (req, res, next) => {
+//     const subdomain = req.hostname.split('.')[0];
 
-    // Dynamically redirect requests based on the subdomain
-    switch (subdomain) {
-        case 'manager':
-            return managerRoute(req, res, next);
-        case 'customer':
-            return customerRoute(req, res, next);
-        case 'employee':
-            return employeeRoute(req, res, next);
-        case 'backend':
-            // TODO: when deploying
-            return managerRoute(req, res, next)
-        case 'localhost':
-            return managerRoute(req, res, next)
-        default:
-            return managerRoute(req, res, next)
-        // Handle default case if subdomain is not recognized
-        // res.status(404).send('Not Fouasdfnsdfd');
+//     // Dynamically redirect requests based on the subdomain
+//     switch (subdomain) {
+//         case 'manager':
+//             return managerRoute(req, res, next);
+//         case 'customer':
+//             return customerRoute(req, res, next);
+//         case 'employee':
+//             return employeeRoute(req, res, next);
+//         case 'backend':
+//             // TODO: when deploying
+//             return managerRoute(req, res, next)
+//         case 'localhost':
+//             return managerRoute(req, res, next)
+//         default:
+//             return managerRoute(req, res, next)
+//         // Handle default case if subdomain is not recognized
+//         // res.status(404).send('Not Fouasdfnsdfd');
+//     }
+// };
+
+const dynamicRouteHandler = (req, res, next) => {
+    const allowedOrigins = [
+        'https://manager.brigadge.online',
+        'https://customer.brigadge.online',
+        'https://employee.brigadge.online',
+        'https://brigadge.online',
+        'http://employee.localhost:3000',
+        'http://manager.localhost:3000',
+        'http://customer.localhost:3000',
+        'http://localhost:3000'
+    ];
+
+    // Check if the request origin is allowed
+    if (allowedOrigins.includes(req.headers.origin)) {
+        const subdomain = req.headers.origin.split('.')[0].split('://')[1];
+
+        // Dynamically redirect requests based on the subdomain
+        switch (subdomain) {
+            case 'manager':
+                return managerRoute(req, res, next);
+            case 'customer':
+                return customerRoute(req, res, next);
+            case 'employee':
+                return employeeRoute(req, res, next);
+            default:
+                // Handle other subdomains or default case
+                return managerRoute(req, res, next);
+        }
+    } else {
+        // If the origin is not allowed, return a 403 Forbidden response
+        res.status(403).send('Forbidden');
     }
 };
 
