@@ -27,19 +27,22 @@ app.use(express.urlencoded({ extended: true, limit: '5mb' }))
 // Custom CORS middleware to dynamically set the origin based on the request
 const customCorsMiddleware = (req, res, next) => {
     // Extract the subdomain from the request hostname
-
+    console.log(req,"this is req");
+    
     const subdomain = req.hostname.split('.')[0];
 
     // Check if the subdomain is 'manager', 'customer', or 'employee'
-    // Set the appropriate origin based on the subdomain
     console.log(subdomain,"this is subdomain");
+    // Set the appropriate origin based on the subdomain
+    console.log(req.hostname,"this is hostname");
+    console.log(ENV,'this is env');
     let origin;
     if (subdomain === 'manager' || subdomain === 'customer' || subdomain === 'employee' || subdomain === 'managerbackend' || subdomain === 'employeebackend' || subdomain === 'customerbackend' || subdomain === 'backend') {
-        origin = ENV == "development" ? `http://${subdomain}.localhost:3000` : `https://${subdomain}.brigadge.online`;
+        origin = ENV === "development" ? `http://${subdomain}.localhost:3000` : `https://${subdomain}.brigadge.online`;
 
     } else {
         // Default origin if subdomain is not recognized
-        origin = ENV == "development" ? `http://localhost:3000` : 'https://brigadge.online';
+        origin = ENV === "development" ? `http://localhost:3000` : 'https://brigadge.online';
     }
     console.log(origin,"this is orgin");
     // Allow other CORS headers
