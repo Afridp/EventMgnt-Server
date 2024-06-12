@@ -27,7 +27,7 @@ app.use(express.urlencoded({ extended: true, limit: '5mb' }))
 // Custom CORS middleware to dynamically set the origin based on the request
 const customCorsMiddleware = (req, res, next) => {
     // Extract the subdomain from the request hostname
-    const requestOrigin = req.headers.orgin
+    const requestOrigin = req.headers.origin
     // const subdomain = req.headers.split('.')[0];
 
     // Check if the subdomain is 'manager', 'customer', or 'employee'
