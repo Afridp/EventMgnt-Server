@@ -31,9 +31,9 @@ const customCorsMiddleware = (req, res, next) => {
     // const subdomain = req.headers.split('.')[0];
 
     // Check if the subdomain is 'manager', 'customer', or 'employee'
-    console.log(subdomain, "this is subdomain");
+    // console.log(subdomain, "this is subdomain");
     // Set the appropriate origin based on the subdomain
-    console.log(req.hostname, "this is hostname");
+    // console.log(req.hostname, "this is hostname");
     console.log(ENV, 'this is env');
 
     // If the request origin is trusted (e.g., your client-side application domains/subdomains)
