@@ -11,9 +11,9 @@ const { switchDB, getDBModel, getDocument, getDocuments, getDocumentWithPopulate
 
 const { TenantSchemas, CompanySchemas } = require('../Utils/dbSchemas');
 require('dotenv').config();
-const API =  process.env.API_REQUEST_SOURCE
+const API = process.env.API_REQUEST_SOURCE
 
-const defaults = async(req,res) => {
+const defaults = async (req, res) => {
     try {
         res.send(process.env.STRIPE_SECRET_KEY)
     } catch (error) {
@@ -23,9 +23,9 @@ const defaults = async(req,res) => {
 // tenent signup
 const managerSignup = async (req, res) => {
     try {
-     
+
         const { signupData } = req.body
-        const Manager = await getCollection('AppTenants','tenant', TenantSchemas)
+        const Manager = await getCollection('AppTenants', 'tenant', TenantSchemas)
 
         const existManager = await Manager.findOne({
             $or: [
@@ -80,7 +80,7 @@ const otpVerification = async (req, res) => {
         const correctOtp = isOtp.otp
 
         const { expiresAt } = isOtp
-        console.log(API,"this is API what i took from env");
+        console.log(API, "this is API what i took from env");
         if (correctOtp && expiresAt < Date.now()) {
             return res.status(403).json({ message: "Otp is expired" })
         }
@@ -92,8 +92,8 @@ const otpVerification = async (req, res) => {
 
             // const event = await Event.findById(eventId)
             // TODO: change the urls according to manager url when manager sharded
-            let success_url = `https://${API}/?managerId=${managerId}&amount=${amount}&scheme=${scheme}`;
-            let cancel_url = `https://${API}/dashboard`
+            let success_url = `http://${API}/?managerId=${managerId}&amount=${amount}&scheme=${scheme}`;
+            let cancel_url = `http://${API}/dashboard`
             const lineItems = [{
                 price_data: {
                     currency: "inr",
@@ -129,9 +129,9 @@ const otpVerification = async (req, res) => {
 const completeSubscription = async (req, res) => {
     try {
         const { managerId, scheme } = req.body
-        
+
         const Manager = await getCollection("AppTenants", "tenant", TenantSchemas)
-       
+
         let currentDate = new Date()
 
         let subscriptionEndDate
@@ -165,11 +165,11 @@ const completeSubscription = async (req, res) => {
 
             const managerSubscribed = await Manager.findByIdAndUpdate(managerId, {
                 $set: {
-                    subscribed: true,     
+                    subscribed: true,
                     subscriptionPlan: scheme,
                     subscriptionStart: currentDate,
                     subscriptionEnd: subscriptionEndDate,
-                   
+
                 },
             }, { new: true })
 
@@ -210,7 +210,7 @@ const resendOtp = async (req, res) => {
 // tenant signing in
 const managerSignin = async (req, res) => {
     try {
-        console.log("jhasdkf");
+
         const { signinDetails, password } = req.body
         const Manager = await getCollection("AppTenants", 'tenant', TenantSchemas)
 
@@ -413,17 +413,18 @@ const getFormOfEvent = async (req, res) => {
         res.status(500).json({ message: "Internal Server Error" })
     }
 }
-
 // submitting a new form for a hosted event
 const submitFormOfEvent = async (req, res) => {
     try {
         const manager = req.headers.role
         const { eventId, fields, managerId, isChecked } = req.body
         const Form = await getCollection(manager, 'form', CompanySchemas)
-
+        const Event = await getCollection(manager, 'event', CompanySchemas)
         const isEventFormExist = await Form.findOne({ eventId: eventId })
 
+
         if (isEventFormExist) {
+
             await Form.findByIdAndUpdate(isEventFormExist._id, {
                 $set: {
                     formFields: fields,
@@ -458,8 +459,9 @@ const submitFormOfEvent = async (req, res) => {
 const editEvent = async (req, res) => {
     try {
         const { eventName, eventDescription, _id } = req.body
-        console.log(eventName, eventDescription, _id);
+        const manager = req.headers.role
 
+        const Event = await getCollection(manager, 'event', CompanySchemas)
         const updated = await Event.findByIdAndUpdate({ _id: _id }, {
             $set: {
                 eventName: eventName,
@@ -524,11 +526,13 @@ const fetchAllBooking = async (req, res) => {
 
 // to get new submissions of bookings
 const getNewSubmissions = async (req, res) => {
-    try {
+    try {        
         const manager = req.headers.role
-        const FormSubmissions = await getCollection(manager, 'formSubmissions', CompanySchemas)
-
-        const newSubmissions = await FormSubmissions.find().populate("eventId")
+        const FormSubmissions = await getCollection(manager, 'formsubmission', CompanySchemas)
+        console.log(FormSubmissions);
+        console.log("reached here");
+        const newSubmissions = await FormSubmissions.find().populate("eventId").exec()
+        console.log(newSubmissions);
         if (newSubmissions) {
             res.status(200).json({ newSubmissions })
         }
@@ -750,8 +754,8 @@ const addEmployee = async (req, res) => {
             })
             await newEmployee.save()
             //    TODO:send created employee to frontend and update
-           await sendCredentialsToEmployee(email, manager)
-        
+            await sendCredentialsToEmployee(email, manager)
+
             res.status(200).json({ message: "successfully added new employee,Employee Id and password sented" })
         } else {
             res.status(409).json({ message: 'This email is already added,try to add a new one' })
@@ -759,7 +763,7 @@ const addEmployee = async (req, res) => {
     } catch (error) {
         console.log(error.message, "the ivide");
         res.status(500).json({ message: "Internal Server Error" })
-    } 
+    }
 }
 
 // to get employees for assgning a event
@@ -832,7 +836,10 @@ const fileUploads = async (req, res) => {
             }
         })
 
-        res.status(200).json({ message: "Files uploaded succes", customerLink: Manager.customerLink })
+        const link = await Manager.findById(managerId, { customerLink: 1 })
+
+
+        res.status(200).json({ message: "Files uploaded succes", customerLink: link.customerLink })
     } catch (error) {
         console.log(error.message)
         res.status(500).json({ message: "Internal Server Error" })
@@ -863,10 +870,10 @@ const customizedContents = async (req, res) => {
 
         await Manager.findByIdAndUpdate(managerId, {
             $set: {
-                'customize.heading' : heading,
-                'customize.paragraph' : paragraph,
-                'customize.aboutUs' : aboutUs
-             }
+                'customize.heading': heading,
+                'customize.paragraph': paragraph,
+                'customize.aboutUs': aboutUs
+            }
         })
         res.status(200).json({ message: "Content Changed Successfully" })
     } catch (error) {

@@ -13,9 +13,10 @@ const FormSubmissions = require('../Models/FormSubmissions')
 const Wallet = require('../Models/Wallet')
 const generateTransactionId = require('../Utils/TransactionIdGenerator')
 const { getDocument, switchDB, getDBModel, getDocuments, getCollection } = require('../Utils/dbHelper')
-const { CompanySchemas } = require('../Utils/dbSchemas')
+const { CompanySchemas, TenantSchemas } = require('../Utils/dbSchemas')
 
-
+require('dotenv').config();
+const API =  process.env.API_REQUEST_SOURCE
 
 
 
@@ -58,11 +59,14 @@ const customerSignin = async (req, res) => {
 const otpVerification = async (req, res) => {
     try {
         const { enteredOtp, customerId, otpId } = req.body
+       
         const { mid } = req.params
-        const Otp = await getCollection("Apptenants", 'otp', TenantSchemas)
+        const Otp = await getCollection("AppTenants", 'otp', TenantSchemas)
+      
         const Customer = await getCollection(mid, 'customer', CompanySchemas)
-
+        
         const isOtp = await Otp.findOne({ _id: otpId })
+     
         const correctOtp = isOtp.otp
 
         const { expiresAt } = isOtp
@@ -162,7 +166,7 @@ const findCustomer = async (req, res) => {
         if (isCustomerAvailable) {
             res.status(200).json({ customer: isCustomerAvailable })
         } else {
-            res.status(401).json({ message: "something went wrong,please login" })
+            res.status(200).json({ message: "dfggbdfg" })
         }
     } catch (error) {
         console.log(error);
@@ -170,38 +174,7 @@ const findCustomer = async (req, res) => {
     }
 }
 
-const getEvents = async (req, res) => {
 
-    try {
-        const { mid } = req.params
-        const { search, sort } = req.query
-        const Event = await getCollection(mid, 'event', CompanySchemas)
-
-        const query = { list: true };
-
-        if (search) {
-            query.eventName = { $regex: new RegExp(search, 'i') };
-        }
-
-        let events
-
-        if (sort) {
-            if (sort === 'eventNameAscending') {
-                events = await Event.find(query)
-                    .sort({ eventName: 1 })
-            } else if (sort === 'eventNameDescending') {
-                events = await Event.find(query)
-                    .sort({ eventName: -1 })
-            }
-        } else {
-            events = await Event.find(query)
-        }
-        res.status(200).json({ events });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Internal server error" });
-    }
-};
 
 const getEventFormField = async (req, res) => {
     try {
@@ -227,23 +200,15 @@ const submitEvent = async (req, res) => {
         const { customerId, mid } = req.params;
         const { eventId } = req.query
         const { formValues, personalValues, amount, walletMode } = req.body
-        const FormSubmissions = await getCollection(mid, "formSubmission", CompanySchemas)
-
-        // TODO: to do when only getting managerid from frontend usr side 
-        const newSubmission = new FormSubmissions({
-            customerId,
-            eventId,
-            formData: formValues,
-            personalData: personalValues,
-            paidAmount: amount,
-            status: "pending"
-        })
-
-        await newSubmission.save()
+        const FormSubmissions = await getCollection(mid, "formsubmission", CompanySchemas)
 
         if (walletMode) {
-            const transactionId = await generateTransactionId()
             const Wallet = await getCollection(mid, "wallet", CompanySchemas)
+            
+            console.log(Wallet,'this is wallet');
+            const balance = await Wallet.findOne({ customerId : customerId},{balance : 1})
+
+            const transactionId = await generateTransactionId()
 
             await Wallet.findOneAndUpdate({ customerId: customerId }, {
                 $inc: { balance: -amount },
@@ -257,6 +222,19 @@ const submitEvent = async (req, res) => {
             })
 
         }
+
+        // TODO: to do when only getting managerid from frontend usr side 
+        const newSubmission = new FormSubmissions({
+            customerId,
+            eventId,
+            formData: formValues,
+            personalData: personalValues,
+            paidAmount: amount,
+            status: "pending"
+        })
+
+        await newSubmission.save()
+
         res.status(200).json({ message: "Event Booked Successfully" })
     } catch (error) {
 
@@ -331,11 +309,13 @@ const paymentCheckout = async (req, res) => {
     try {
         const stripeInstance = Stripe(process.env.STRIPE_SECRET_KEY)
         const { eventId, personalValues, formValues, amt } = req.body
+        const { mid } = req.params
+        const Event = await getCollection(mid, 'event', CompanySchemas)
 
         const event = await Event.findById(eventId)
         // TODO: change the urls according to manager url when manager sharded
-        let success_url = `http://localhost:3000/payment?eventId=${eventId}&amount=${amt}&personalValues=${encodeURIComponent(JSON.stringify(personalValues))}&formValues=${encodeURIComponent(JSON.stringify(formValues))}`;
-        let cancel_url = `http://localhost:3000/events/book/${eventId}`
+        let success_url = `http://customer.${API}/${mid}/payment?eventId=${eventId}&amount=${amt}&personalValues=${encodeURIComponent(JSON.stringify(personalValues))}&formValues=${encodeURIComponent(JSON.stringify(formValues))}`;
+        let cancel_url = `http://customer.${API}/${mid}/events/book/${eventId}`
         const lineItems = [{
             price_data: {
                 currency: "inr",
@@ -363,12 +343,50 @@ const paymentCheckout = async (req, res) => {
     }
 }
 
+const getEvents = async (req, res) => {
+
+    try {
+        const { mid } = req.params
+        const { search, sort } = req.query
+        const Event = await getCollection(mid, 'event', CompanySchemas)
+
+        const query = { list: true };
+
+        if (search) {
+            query.eventName = { $regex: new RegExp(search, 'i') };
+        }
+
+        let events
+
+        if (sort) {
+            if (sort === 'eventNameAscending') {
+                events = await Event.find(query)
+                    .sort({ eventName: 1 })
+            } else if (sort === 'eventNameDescending') {
+                events = await Event.find(query)
+                    .sort({ eventName: -1 })
+            }
+        } else {
+            events = await Event.find(query)
+        }
+        res.status(200).json({ events });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
 const getBookings = async (req, res) => {
     try {
+        
         const { customerId, mid } = req.params
         const { search, sort } = req.query
+      
         const Booking = await getCollection(mid, 'booking', CompanySchemas)
-        const FormSubmissions = await getCollection(mid, 'formSubmission', CompanySchemas)
+   
+        const FormSubmissions = await getCollection(mid, 'formsubmission', CompanySchemas)
+
+        console.log("haaiidid");
 
         let query = { customerId: customerId }
         // TODO:need to work on the search
@@ -381,6 +399,7 @@ const getBookings = async (req, res) => {
 
 
         if (sort) {
+
             if (sort === 'dateAscending') {
                 const dateAscendingBookings = await Booking.find(query).sort({ createdAt: 1 }).populate('eventId')
                 const dateAscendingFormsubmission = await FormSubmissions.find(query).sort({ createdAt: 1 }).populate('eventId')
@@ -395,18 +414,19 @@ const getBookings = async (req, res) => {
                 bookings = await FormSubmissions.find(query).populate('eventId')
             }
         } else {
+          
             const formSubmissions = await FormSubmissions.find(query).populate('eventId');
             const bookingsFromBookingCollection = await Booking.find(query).populate('eventId');
 
             bookings = [...formSubmissions, ...bookingsFromBookingCollection];
         }
-        if (bookings.length) {
+        if (bookings.length > 1) {
             res.status(200).json({ bookings })
         } else {
             res.status(204).json({ message: "no data" })
         }
     } catch (error) {
-        console.log(error);
+        console.error(error);
         res.status(500).json({ message: "internal server Error" })
     }
 }
@@ -566,9 +586,11 @@ const updateProfilePic = async (req, res) => {
 }
 const updateProfile = async (req, res) => {
     try {
+       
         const { userName, mobile, email } = req.body
         const { customerId } = req.query
         const { mid } = req.params
+        console.log(mid,CompanySchemas);
         const Customer = await getCollection(mid, "customer", CompanySchemas)
 
         const updated = await Customer.findByIdAndUpdate(customerId, {
@@ -621,8 +643,10 @@ const topupWallet = async (req, res) => {
     try {
         const stripeInstance = Stripe(process.env.STRIPE_SECRET_KEY)
         const { amount, customerId } = req.body
-        let success_url = `http://localhost:3000/wallet/${amount}/${customerId}/${"success"}`;
-        let cancel_url = `http://localhost:3000/wallet`
+        const { mid } = req.params
+        console.log(mid,"HTIS IS ");
+        let success_url = `http://customer.${API}/${mid}/wallet/${amount}/${customerId}/${"success"}`;
+        let cancel_url = `http://customer.${API}/${mid}/wallet`
         const lineItems = [{
             price_data: {
                 currency: "inr",
@@ -655,10 +679,14 @@ const getWallet = async (req, res) => {
         const { customerId } = req.query
         const { mid } = req.params
         const Wallet = await getCollection(mid, 'wallet', CompanySchemas)
-
+        
         const existWallet = await Wallet.findOne({ customerId: customerId })
+        if(existWallet){
 
-        res.status(200).json({ balance: existWallet.balance, transactions: existWallet.transactions })
+            res.status(200).json({ balance: existWallet.balance, transactions: existWallet.transactions })
+        }else{
+            res.status(204).json({message: "no Data"})
+        }
 
     } catch (error) {
         console.log(error);
@@ -690,6 +718,7 @@ const addBalance = async (req, res) => {
         );
 
         if (existWallet) {
+            console.log("reacherd in add balance");
             res.status(200).json({ message: "Balance updated successfully" });
         } else {
             res.status(404).json({ message: "Wallet not found for the customerId" });

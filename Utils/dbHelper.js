@@ -1,25 +1,38 @@
 const { query } = require('express');
 const connectDB = require('../Configurations/dbConfig');
 const { modelName } = require('../Models/Otp');
+const { mongoose } = require('mongoose');
 
 const switchDB = async (dbName, dbSchema) => {
+    try {
+        // Connect to the default database or the specified one
+        const conn = await connectDB(); // Assuming this function connects to the default database
 
-    const mongoose = await connectDB()
+        if (conn.readyState === 1) {
+            const db = mongoose.connection.useDb(dbName, { useCache: true }); // `useCache: true` prevents re-opening of connections
 
-    if (mongoose.connection.readyState === 1) {
-        const db = await mongoose.connection.useDb(dbName)
-        // Prevent from schema re-registration
-        if (!Object.keys(db.models).length) {
-
-            dbSchema.forEach((schema, modelName) => {
-
-                db.model(modelName, schema)
-            })
+            // Prevent schema re-registration
+            if (!Object.keys(db.models).length) {
+                dbSchema.forEach((schema, modelName) => {
+                    db.model(modelName, schema);
+                });
+            }
+            // if (!Object.keys(db.models).length) {
+            //     Object.entries(dbSchema).forEach(([modelName, schema]) => {
+            //       db.model(modelName, schema);
+            //     });
+            //   }
+            console.log(`Switched to database: ${dbName}`);
+            return db;
+        } else {
+            throw new Error('Mongoose connection is not ready');
         }
-        return db
+    } catch (err) {
+        console.error(`Failed to switch to database ${dbName}:`, err);
+        throw new Error(`Database switch failed: ${err.message}`);
     }
-    throw new Error('err')
-}
+};
+
 // modelName === collectionName
 const getDBModel = async (db, modelName) => {
     return db.model(modelName)
@@ -27,12 +40,13 @@ const getDBModel = async (db, modelName) => {
 }
 
 const getCollection = async (dbName, modelName, dbSchema) => {
+
     const db = await switchDB(dbName, dbSchema)
     const collection = await getDBModel(db, modelName)
     return collection
 }
 
-          
+
 const getDocument = async (query, collectionName, dbname, schemas) => {
     try {
 

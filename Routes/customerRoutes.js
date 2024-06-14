@@ -22,8 +22,8 @@ customerRoute.delete('/:mid/cancelBooked/:eventId', cancelBooked)//
 customerRoute.post('/:mid/updateProfilePic', updateProfilePic)//
 customerRoute.post('/:mid/updateProfile', updateProfile)//
 customerRoute.post('/:mid/changePassword', changePassword)//
-customerRoute.post('/paymentCheckout', paymentCheckout)
-customerRoute.post('/topupWallet', topupWallet)
+customerRoute.post('/:mid/paymentCheckout', paymentCheckout)
+customerRoute.post('/:mid/topupWallet', topupWallet)
 customerRoute.get('/:mid/getWalletDetails', getWallet)//
 customerRoute.post('/:mid/addBalance', addBalance)//
 

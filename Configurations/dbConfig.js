@@ -15,17 +15,22 @@ const mongoOptions = {
 function connectDB() {
   return new Promise((resolve, reject) => {
     const mongoURL = process.env.MONGO_URI;
-    
-    mongoose
-      .connect(mongoURL, mongoOptions)
-      .then((conn) => {
-        console.log('Connected to MongoDB');
-        resolve(conn);
-      })
-      .catch((error) => {
-        console.error('Failed to connect to MongoDB:', error);
-        reject(error);
-      });
+
+    if (mongoose.connection.readyState === 1) {
+      console.log('Already connected to MongoDB');
+      resolve(mongoose.connection);
+    } else {
+      mongoose
+        .connect(mongoURL, mongoOptions)
+        .then((conn) => {
+          console.log('Connected to MongoDB');
+          resolve(conn);
+        })
+        .catch((error) => {
+          console.error('Failed to connect to MongoDB:', error);
+          reject(error);
+        });
+    }
   });
 }
 
