@@ -1,6 +1,6 @@
 const express = require('express');
 const managerRoute = express()
-const { managerSignup, managerSignin, otpVerification, resendOtp, addNewEvents, getEvents, editEvent, listingAndUnlist, fetchAllBooking, getEventData, getTodaysEvents, getUpcomingEvents, manageSubscription, isSubscribed, getNewEmployees, approveEmployee, getAllEmployees, blockUnblockEmployee, getNewSubmissions, addEmployee, submitFormOfEvent, getFormOfEvent, getEmployees, approveEvent, customizedAppearance, fileUploads, customizedContents, completeSubscription, createSubdomain, defaults } = require('../Controllers/manager');
+const { managerSignup, managerSignin, otpVerification, resendOtp, addNewEvents, getEvents, editEvent, listingAndUnlist, fetchAllBooking, getEventData, getTodaysEvents, getUpcomingEvents, manageSubscription, isSubscribed, getNewEmployees, approveEmployee, getAllEmployees, blockUnblockEmployee, getNewSubmissions, addEmployee, submitFormOfEvent, getFormOfEvent, getEmployees, approveEvent, customizedAppearance, fileUploads, customizedContents, completeSubscription, createSubdomain, defaults, updateProfile, fetchProfile } = require('../Controllers/manager');
 const { managerTokenVerify } = require("../Middileware/mangerAuth");
 
 managerRoute.get('/',defaults)
@@ -36,7 +36,8 @@ managerRoute.post('/approveEvent', approveEvent)//
 managerRoute.post('/fileUpload', fileUploads)//
 managerRoute.post('/appearancePost', customizedAppearance)//
 managerRoute.post('/contentsPost',customizedContents)//
-
+managerRoute.post('/updateProfile', updateProfile)
+managerRoute.get('/getProfile',fetchProfile)
 
 // managerRoute.get('/isSubscribed', isSubscribed)
 

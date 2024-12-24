@@ -3,15 +3,15 @@ const mongoose = require('mongoose');
 const bookingSchema = mongoose.Schema({
   customerId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Customer"
+    ref: "customer"
   },
   eventId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Event"
+    ref: "event"
   },
   managerId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Manager"
+    ref: "manager"
   },
   formData: {
     type: Object

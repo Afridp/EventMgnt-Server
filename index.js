@@ -7,6 +7,7 @@ const customerRoute = require('./Routes/customerRoutes')
 const employeeRoute = require('./Routes/employeeRoutes');
 const { startSubscriptionUpdateJob } = require('./Jobs/subscriptionUpdater');
 const { subscriptionEndRemainderMail } = require('./Jobs/subscriptionEndMailRemainder');
+const connectDB = require('./Configurations/dbConfig')
 const ENV = process.env.NODE_ENV
 
 require('dotenv').config();
@@ -24,6 +25,18 @@ app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '5mb' }))
 // middleware for parsing the URL encoded data,(html forms datas)
 
+
+async function startServer() {
+    try {
+        await connectDB();
+        // Start your server here
+    } catch (error) {
+        console.error('Failed to start server:', error);
+        process.exit(1);
+    }
+}
+
+startServer();
 // Custom CORS middleware to dynamically set the origin based on the request
 const customCorsMiddleware = (req, res, next) => {
     // Extract the subdomain from the request hostname

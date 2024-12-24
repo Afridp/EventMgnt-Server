@@ -38,7 +38,7 @@ const customerSignin = async (req, res) => {
                 const isPassword = await bcrypt.compare(password, existCustomer.password)
 
                 if (isPassword) {
-                    const token = jwt.sign({ clientId: existCustomer._id, role: 'client' }, process.env.TOKEN_KEY, { expiresIn: '4h' })
+                    const token = jwt.sign({ clientId: existCustomer._id, role: 'client' }, process.env.TOKEN_KEY, { expiresIn: '1h' })
                     res.status(200).json({ customerData: existCustomer, token, message: "login success" })
                 } else {
                     res.status(401).json({ message: 'Password is incorrect,please try again' })
@@ -522,7 +522,7 @@ const cancelBooked = async (req, res) => {
     try {
         const { eventId, mid } = req.params;
         const Booking = await getCollection(mid, "booking", CompanySchemas)
-        const FormSubmissions = await getCollection(mid, "formSubmission", CompanySchemas)
+        const FormSubmissions = await getCollection(mid, "formsubmission", CompanySchemas)
         const Wallet = await getCollection(mid, 'wallet', CompanySchemas)
 
         const bookingEvent = await Booking.findById(eventId)

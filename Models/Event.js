@@ -7,7 +7,7 @@ const eventSchema = mongoose.Schema({
     // },
     managerId : {
         type : mongoose.Schema.Types.ObjectId,
-        ref : 'Manager'
+        ref : 'manager'
     },
     eventName : {
         type : String

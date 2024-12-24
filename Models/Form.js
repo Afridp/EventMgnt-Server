@@ -3,11 +3,11 @@ const mongoose = require("mongoose")
 const formsSchema = mongoose.Schema({
     eventId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Event'
+        ref: 'event'
     },
     managerId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Manager'
+        ref: 'manager'
     },
     formFields: {
         type: Array

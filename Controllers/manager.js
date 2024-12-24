@@ -307,6 +307,7 @@ const getTodaysEvents = async (req, res) => {
                 }
             }
         ]);
+        console.log(todaysEvents,"this is todays events");
         res.status(200).json({ todaysEvents });
     } catch (error) {
         console.error(error.message);
@@ -315,34 +316,60 @@ const getTodaysEvents = async (req, res) => {
 }
 
 // manager fetching upcoming events 
+// const getUpcomingEvents = async (req, res) => {
+//     try {
+//         const manager = req.headers.role
+//         const Bookings = await getCollection(manager, 'booking', CompanySchemas)
+
+//         const today = new Date()
+
+//         // const upcomingEvents = await Booking.find({
+//         //     'formData.Date.startDate': { $gte: today }
+//         // });
+
+//         const upcomingEvents = await Bookings.find().populate('eventId')
+//         console.log(upcomingEvents[1].formData,"this is upcoming events for firt time");
+
+//         // console.log(upcomingEvents.formData.Date.startDate);
+//         let events = []
+//         let a = upcomingEvents.map((event, i) => {
+//             let date = new Date(event.formData.Date.startDate)
+//             if (date > today) {
+//                 events.push(event)
+//             }
+//         })
+//         console.log(events,"this is upcoming events");
+//         res.status(200).json({ upcomingEvents: events })
+//     } catch (error) {
+//         console.error(error.message);
+//         res.status(500).json({ message: 'Internal Server Error' });
+//     }
+// }
+
 const getUpcomingEvents = async (req, res) => {
     try {
-        const manager = req.headers.role
-        const Bookings = await getCollection(manager, 'booking', CompanySchemas)
+        const manager = req.headers.role;
+        const Bookings = await getCollection(manager, 'booking', CompanySchemas);
 
-        const today = new Date()
+        const today = new Date();
 
-        // const upcomingEvents = await Booking.find({
-        //     'formData.Date.startDate': { $gte: today }
-        // });
+        const upcomingEvents = await Bookings.find().populate('eventId');
 
-        const upcomingEvents = await Bookings.find().populate('eventId')
-
-        // console.log(upcomingEvents.formData.Date.startDate);
-        let events = []
-        let a = upcomingEvents.map((event, i) => {
-            let date = new Date(event.formData.Date.startDate)
-            if (date > today) {
-                events.push(event)
+        let events = upcomingEvents.filter(event => {
+            if (event.formData.Date && event.formData.Date.startDate) {
+                const startDate = new Date(event.formData.Date.startDate);
+                return startDate > today;
             }
-        })
-        res.status(200).json({ upcomingEvents: events })
+            return false;
+        });
+
+        console.log(events, "these are the upcoming events");
+        res.status(200).json({ upcomingEvents: events });
     } catch (error) {
         console.error(error.message);
         res.status(500).json({ message: 'Internal Server Error' });
     }
-}
-
+};
 // getiing manager's hosted event (my events)
 const getEvents = async (req, res) => {
     try {
@@ -515,7 +542,7 @@ const fetchAllBooking = async (req, res) => {
         const Booking = await getCollection(manager, 'booking', CompanySchemas)
 
         const bookings = await Booking.find().populate("eventId")
-
+    
         res.status(200).json({ bookings })
 
     } catch (error) {
@@ -786,7 +813,7 @@ const approveEvent = async (req, res) => {
     try {
         const manager = req.headers.role
         const { submissionId } = req.body
-        const FormSubmissions = await getCollection(manager, "formSubmission", CompanySchemas)
+        const FormSubmissions = await getCollection(manager, "formsubmission", CompanySchemas)
         const Booking = await getCollection(manager, 'booking', CompanySchemas)
 
         const submission = await FormSubmissions.findById(submissionId)
@@ -882,6 +909,42 @@ const customizedContents = async (req, res) => {
     }
 }
 
+const updateProfile = async (req,res) =>{
+    try {
+        const { mobile, password, managerId} = req.body
+        const Manager = await getCollection("AppTenants", "tenant", TenantSchemas)
+
+        const spassword = await hash.hashPassword(password)
+
+        await Manager.findByIdAndUpdate(managerId, {
+            $set:{
+                companyMobile : mobile,
+                password : spassword
+            }
+        })
+
+        res.status(200).json({ message : "Updated Succesfully"})
+    } catch (error) {
+        console.log(error.message);
+        res.status(500).json({ message: "Internal Server Error" })
+    }
+}
+
+const fetchProfile = async (req,res) =>{
+    try {
+ 
+        const { managerId } = req.query
+        const Manager = await getCollection("AppTenants", "tenant", TenantSchemas)
+
+        const managerDetails = await Manager.findById(managerId)
+
+        res.status(200).json({ mobile : managerDetails.companyMobile })
+    } catch (error) {
+        console.log(error.message);
+        res.status(500).json({ message: "Internal Server Error" })
+    }
+}
+
 
 module.exports = {
     managerSignup,
@@ -910,5 +973,7 @@ module.exports = {
     fileUploads,
     customizedAppearance,
     customizedContents,
-    defaults
+    defaults,
+    updateProfile,
+    fetchProfile
 }

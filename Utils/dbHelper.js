@@ -3,30 +3,54 @@ const connectDB = require('../Configurations/dbConfig');
 const { modelName } = require('../Models/Otp');
 const { mongoose } = require('mongoose');
 
+// const switchDB = async (dbName, dbSchema) => {
+//     try {
+//         // Connect to the default database or the specified one
+//         const conn = await connectDB(); // Assuming this function connects to the default database
+
+//         if (conn.readyState === 1) {
+//             const db = mongoose.connection.useDb(dbName, { useCache: true }); // `useCache: true` prevents re-opening of connections
+
+//             // Prevent schema re-registration
+//             if (!Object.keys(db.models).length) {
+//                 dbSchema.forEach((schema, modelName) => {
+//                     db.model(modelName, schema);
+//                 });
+//             }
+//             // if (!Object.keys(db.models).length) {
+//             //     Object.entries(dbSchema).forEach(([modelName, schema]) => {
+//             //       db.model(modelName, schema);
+//             //     });
+//             //   }
+//             console.log(`Switched to database: ${dbName}`);
+//             return db;
+//         } else {
+//             throw new Error('Mongoose connection is not ready');
+//         }
+//     } catch (err) {
+//         console.error(`Failed to switch to database ${dbName}:`, err);
+//         throw new Error(`Database switch failed: ${err.message}`);
+//     }
+// };
+
 const switchDB = async (dbName, dbSchema) => {
     try {
-        // Connect to the default database or the specified one
-        const conn = await connectDB(); // Assuming this function connects to the default database
-
-        if (conn.readyState === 1) {
-            const db = mongoose.connection.useDb(dbName, { useCache: true }); // `useCache: true` prevents re-opening of connections
-
-            // Prevent schema re-registration
-            if (!Object.keys(db.models).length) {
-                dbSchema.forEach((schema, modelName) => {
-                    db.model(modelName, schema);
-                });
-            }
-            // if (!Object.keys(db.models).length) {
-            //     Object.entries(dbSchema).forEach(([modelName, schema]) => {
-            //       db.model(modelName, schema);
-            //     });
-            //   }
-            console.log(`Switched to database: ${dbName}`);
-            return db;
-        } else {
-            throw new Error('Mongoose connection is not ready');
+        // Ensure we have a connection
+        if (mongoose.connection.readyState !== 1) {
+            await connectDB();
         }
+
+        const db = mongoose.connection.useDb(dbName, { useCache: true });
+
+        // Prevent schema re-registration
+        if (!Object.keys(db.models).length) {
+            dbSchema.forEach((schema, modelName) => {
+                db.model(modelName, schema);
+            });
+        }
+
+        console.log(`Switched to database: ${dbName}`);
+        return db;
     } catch (err) {
         console.error(`Failed to switch to database ${dbName}:`, err);
         throw new Error(`Database switch failed: ${err.message}`);

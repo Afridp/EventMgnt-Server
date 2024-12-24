@@ -21,7 +21,7 @@ const customerSchema = mongoose.Schema({
     },
     wallet : {
         type : mongoose.Schema.Types.ObjectId,
-        ref : 'Wallet'
+        ref : 'wallet'
     },
     bookings: [
         {
