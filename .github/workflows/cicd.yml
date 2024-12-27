@@ -12,10 +12,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Setup Docker permissions
-        run: |
-          sudo chmod 666 /var/run/docker.sock
-          sudo service docker start || true
+     
 
       - name: Login to docker hub
         run: sudo docker login -u ${{ secrets.DOCKER_USERNAME}} -p ${{ secrets.DOCKER_PASSWORD }}
@@ -37,15 +34,12 @@ jobs:
 
       - name: Publish Image to docker hub
         run: docker push afridp/eventbrigadge-server:latest
-        
+
   deploy:
     needs: build
     runs-on: self-hosted
     steps:
-      - name: Setup Docker permissions
-        run: |
-          sudo chmod 666 /var/run/docker.sock
-          sudo service docker start || true
+  
 
       - name: Pull image from docker hub
         run: docker pull afridp/eventbrigadge-server:latest
