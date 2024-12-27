@@ -133,7 +133,7 @@ const dynamicRouteHandler = (req, res, next) => {
         'http://customer.localhost:3000',
         'http://localhost:3000'
     ];
-
+    
     // Check if the request origin is allowed
     if (allowedOrigins.includes(req.headers.origin)) {
         const subdomain = req.headers.origin.split('.')[0].split('://')[1];
