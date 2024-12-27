@@ -12,6 +12,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Setup Docker permissions
+        run: |
+          sudo chmod 666 /var/run/docker.sock
+          sudo service docker start || true
      
 
       - name: Login to Docker Hub
@@ -42,6 +46,11 @@ jobs:
     needs: build
     runs-on: self-hosted
     steps:
+
+      - name: Setup Docker permissions
+        run: |
+         sudo chmod 666 /var/run/docker.sock
+         sudo service docker start || true
   
       - name: Pull image from docker hub
         run: docker pull afridp/eventbrigadge-server:latest
