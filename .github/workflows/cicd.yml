@@ -10,10 +10,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.1.4
+        uses: actions/checkout@v3
+
+      - name: Setup Docker permissions
+        run: |
+          sudo chmod 666 /var/run/docker.sock
+          sudo service docker start || true
 
       - name: Login to docker hub
-        run: docker login -u ${{ secrets.DOCKER_USERNAME}} -p ${{ secrets.DOCKER_PASSWORD }}
+        run: sudo docker login -u ${{ secrets.DOCKER_USERNAME}} -p ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build Docker Image
         run: |
@@ -32,11 +37,16 @@ jobs:
 
       - name: Publish Image to docker hub
         run: docker push afridp/eventbrigadge-server:latest
-        
+
   deploy:
     needs: build
     runs-on: self-hosted
     steps:
+      - name: Setup Docker permissions
+        run: |
+          sudo chmod 666 /var/run/docker.sock
+          sudo service docker start || true
+
       - name: Pull image from docker hub
         run: docker pull afridp/eventbrigadge-server:latest
 
@@ -66,6 +76,3 @@ jobs:
           -v ~/ssl-certs/cloudflare-cert.pem:/etc/nginx/ssl/cloudflare-cert.pem \
           -v ~/ssl-certs/cloudflare-key.pem:/etc/nginx/ssl/cloudflare-key.pem \
           afridp/eventbrigadge-server:latest
-
-
-      
