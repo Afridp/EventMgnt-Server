@@ -40,7 +40,6 @@ jobs:
     runs-on: self-hosted
     steps:
   
-
       - name: Pull image from docker hub
         run: docker pull afridp/eventbrigadge-server:latest
 
